@@ -12,6 +12,7 @@ import glob
 
 from src.state import AppState, ProcessingFile, FileStatus, CutMode
 from src.video_processor import VideoProcessor
+from src.ui.drag_drop import DragDropHandler
 
 # Video file extensions for scanning
 VIDEO_EXTENSIONS = ('*.mp4', '*.mkv', '*.avi', '*.mov', '*.m4v', '*.webm')
@@ -24,9 +25,13 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         super().__init__(parent, fg_color="#0f172a")
         self.state = state
         self.processor = processor
-        
+        self.drag_drop_handler = None  # Will be initialized after UI creation
+
         self._create_ui()
         self.state.register_log_callback(self._on_log_update)
+
+        # Initialize drag-drop after UI is created
+        self._init_drag_drop()
     
     def _create_ui(self):
         """Create the UI components"""
@@ -189,6 +194,23 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         self.cut_minutes_frame = ctk.CTkFrame(self.cut_params_row, fg_color="transparent")
         self.cut_minutes_frame.pack(side="left", padx=(100, 0))
 
+        # Hours
+        ctk.CTkLabel(
+            self.cut_minutes_frame,
+            text="Hours:",
+            font=ctk.CTkFont(size=12),
+            text_color="#94a3b8"
+        ).pack(side="left", padx=(0, 8))
+
+        self.cut_hours_entry = ctk.CTkEntry(
+            self.cut_minutes_frame,
+            width=60,
+            height=28
+        )
+        self.cut_hours_entry.pack(side="left", padx=(0, 8))
+        self.cut_hours_entry.insert(0, "0")
+
+        # Minutes
         ctk.CTkLabel(
             self.cut_minutes_frame,
             text="Minutes:",
@@ -198,12 +220,13 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
 
         self.cut_minutes_entry = ctk.CTkEntry(
             self.cut_minutes_frame,
-            width=70,
+            width=60,
             height=28
         )
         self.cut_minutes_entry.pack(side="left", padx=(0, 8))
         self.cut_minutes_entry.insert(0, "5")
 
+        # Seconds
         ctk.CTkLabel(
             self.cut_minutes_frame,
             text="Seconds:",
@@ -213,7 +236,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
 
         self.cut_seconds_entry = ctk.CTkEntry(
             self.cut_minutes_frame,
-            width=70,
+            width=60,
             height=28
         )
         self.cut_seconds_entry.pack(side="left")
@@ -224,28 +247,40 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         self.cut_range_frame.pack(side="left", padx=(100, 0))
 
         # Start time
-        ctk.CTkLabel(self.cut_range_frame, text="Start:", font=ctk.CTkFont(size=12), text_color="#94a3b8").pack(side="left", padx=(0, 4))
-        self.cut_start_entry = ctk.CTkEntry(self.cut_range_frame, width=50, height=28)
+        ctk.CTkLabel(self.cut_range_frame, text="Start:", font=ctk.CTkFont(size=12, weight="bold"), text_color="#94a3b8").pack(side="left", padx=(0, 6))
+
+        self.cut_start_hours_entry = ctk.CTkEntry(self.cut_range_frame, width=45, height=28)
+        self.cut_start_hours_entry.pack(side="left", padx=(0, 2))
+        self.cut_start_hours_entry.insert(0, "0")
+        ctk.CTkLabel(self.cut_range_frame, text="h", font=ctk.CTkFont(size=11), text_color="#64748b").pack(side="left", padx=(0, 6))
+
+        self.cut_start_entry = ctk.CTkEntry(self.cut_range_frame, width=45, height=28)
         self.cut_start_entry.pack(side="left", padx=(0, 2))
         self.cut_start_entry.insert(0, "0")
-        ctk.CTkLabel(self.cut_range_frame, text="m", font=ctk.CTkFont(size=11), text_color="#94a3b8").pack(side="left", padx=(0, 4))
+        ctk.CTkLabel(self.cut_range_frame, text="m", font=ctk.CTkFont(size=11), text_color="#64748b").pack(side="left", padx=(0, 6))
 
-        self.cut_start_sec_entry = ctk.CTkEntry(self.cut_range_frame, width=50, height=28)
+        self.cut_start_sec_entry = ctk.CTkEntry(self.cut_range_frame, width=45, height=28)
         self.cut_start_sec_entry.pack(side="left", padx=(0, 2))
         self.cut_start_sec_entry.insert(0, "0")
-        ctk.CTkLabel(self.cut_range_frame, text="s", font=ctk.CTkFont(size=11), text_color="#94a3b8").pack(side="left", padx=(0, 12))
+        ctk.CTkLabel(self.cut_range_frame, text="s", font=ctk.CTkFont(size=11), text_color="#64748b").pack(side="left", padx=(0, 16))
 
         # End time
-        ctk.CTkLabel(self.cut_range_frame, text="End:", font=ctk.CTkFont(size=12), text_color="#94a3b8").pack(side="left", padx=(0, 4))
-        self.cut_end_entry = ctk.CTkEntry(self.cut_range_frame, width=50, height=28)
+        ctk.CTkLabel(self.cut_range_frame, text="End:", font=ctk.CTkFont(size=12, weight="bold"), text_color="#94a3b8").pack(side="left", padx=(0, 6))
+
+        self.cut_end_hours_entry = ctk.CTkEntry(self.cut_range_frame, width=45, height=28)
+        self.cut_end_hours_entry.pack(side="left", padx=(0, 2))
+        self.cut_end_hours_entry.insert(0, "")
+        ctk.CTkLabel(self.cut_range_frame, text="h", font=ctk.CTkFont(size=11), text_color="#64748b").pack(side="left", padx=(0, 6))
+
+        self.cut_end_entry = ctk.CTkEntry(self.cut_range_frame, width=45, height=28)
         self.cut_end_entry.pack(side="left", padx=(0, 2))
         self.cut_end_entry.insert(0, "")
-        ctk.CTkLabel(self.cut_range_frame, text="m", font=ctk.CTkFont(size=11), text_color="#94a3b8").pack(side="left", padx=(0, 4))
+        ctk.CTkLabel(self.cut_range_frame, text="m", font=ctk.CTkFont(size=11), text_color="#64748b").pack(side="left", padx=(0, 6))
 
-        self.cut_end_sec_entry = ctk.CTkEntry(self.cut_range_frame, width=50, height=28)
+        self.cut_end_sec_entry = ctk.CTkEntry(self.cut_range_frame, width=45, height=28)
         self.cut_end_sec_entry.pack(side="left", padx=(0, 2))
         self.cut_end_sec_entry.insert(0, "")
-        ctk.CTkLabel(self.cut_range_frame, text="s", font=ctk.CTkFont(size=11), text_color="#94a3b8").pack(side="left")
+        ctk.CTkLabel(self.cut_range_frame, text="s", font=ctk.CTkFont(size=11), text_color="#64748b").pack(side="left")
         
         self._on_cut_mode_change()
 
@@ -699,6 +734,12 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
     def _sync_state_from_ui(self):
         """Sync cut/trim and output options from UI to state"""
         self.state.cut_mode = CutMode(self.cut_mode_var.get())
+
+        # For CUT_LAST and CUT_FIRST modes
+        try:
+            self.state.cut_hours = float(self.cut_hours_entry.get() or "0")
+        except ValueError:
+            self.state.cut_hours = 0.0
         try:
             self.state.cut_minutes = float(self.cut_minutes_entry.get() or "0")
         except ValueError:
@@ -707,6 +748,12 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             self.state.cut_seconds = float(self.cut_seconds_entry.get() or "0")
         except ValueError:
             self.state.cut_seconds = 0.0
+
+        # For CUT_RANGE mode - Start time
+        try:
+            self.state.cut_start_hours = float(self.cut_start_hours_entry.get() or "0")
+        except ValueError:
+            self.state.cut_start_hours = 0.0
         try:
             self.state.cut_start_minutes = float(self.cut_start_entry.get() or "0")
         except ValueError:
@@ -715,6 +762,13 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             self.state.cut_start_seconds = float(self.cut_start_sec_entry.get() or "0")
         except ValueError:
             self.state.cut_start_seconds = 0.0
+
+        # For CUT_RANGE mode - End time
+        try:
+            end_hours = self.cut_end_hours_entry.get().strip()
+            self.state.cut_end_hours = float(end_hours) if end_hours else None
+        except ValueError:
+            self.state.cut_end_hours = None
         try:
             end = self.cut_end_entry.get().strip()
             self.state.cut_end_minutes = float(end) if end else None
@@ -756,33 +810,37 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         """Validate user inputs before processing"""
         # Validate time inputs are numeric
         try:
+            hours = float(self.cut_hours_entry.get() or "0")
             mins = float(self.cut_minutes_entry.get() or "0")
             secs = float(self.cut_seconds_entry.get() or "0")
-            if mins < 0 or secs < 0:
+            if hours < 0 or mins < 0 or secs < 0:
                 return False, "Time values cannot be negative"
         except ValueError:
-            return False, "Minutes and seconds must be valid numbers"
+            return False, "Hours, minutes and seconds must be valid numbers"
 
         # Validate range mode
         if self.state.cut_mode == CutMode.CUT_RANGE:
             try:
+                start_hours = float(self.cut_start_hours_entry.get() or "0")
                 start_mins = float(self.cut_start_entry.get() or "0")
                 start_secs = float(self.cut_start_sec_entry.get() or "0")
+                end_hours_str = self.cut_end_hours_entry.get().strip()
                 end_mins_str = self.cut_end_entry.get().strip()
                 end_secs_str = self.cut_end_sec_entry.get().strip()
 
-                if start_mins < 0 or start_secs < 0:
+                if start_hours < 0 or start_mins < 0 or start_secs < 0:
                     return False, "Start time cannot be negative"
 
-                if end_mins_str or end_secs_str:
+                if end_hours_str or end_mins_str or end_secs_str:
+                    end_hours = float(end_hours_str) if end_hours_str else 0
                     end_mins = float(end_mins_str) if end_mins_str else 0
                     end_secs = float(end_secs_str) if end_secs_str else 0
 
-                    if end_mins < 0 or end_secs < 0:
+                    if end_hours < 0 or end_mins < 0 or end_secs < 0:
                         return False, "End time cannot be negative"
 
-                    start_total = (start_mins * 60) + start_secs
-                    end_total = (end_mins * 60) + end_secs
+                    start_total = (start_hours * 3600) + (start_mins * 60) + start_secs
+                    end_total = (end_hours * 3600) + (end_mins * 60) + end_secs
 
                     if end_total <= start_total:
                         return False, "End time must be after start time"
@@ -855,3 +913,53 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
     
     def _on_log_update(self, message: str):
         pass
+
+    def _init_drag_drop(self):
+        """Initialize drag-drop handler for the file list frame"""
+        try:
+            self.drag_drop_handler = DragDropHandler(
+                self.file_list_frame,
+                self._on_files_dropped
+            )
+            self.drag_drop_handler.enable()
+            self.state.add_log("Drag-drop enabled - drag video files onto the file list")
+        except Exception as e:
+            self.state.add_log(f"Warning: Could not enable drag-drop: {e}")
+            # Drag-drop is optional, continue without it
+
+    def _on_files_dropped(self, file_paths: List[str]):
+        """
+        Handle files dropped onto the file list.
+
+        Args:
+            file_paths: List of video file paths from drag-drop
+        """
+        if not file_paths:
+            return
+
+        # Check for duplicates
+        existing_paths = {f.path for f in self.state.selected_files}
+        new_files = [p for p in file_paths if p not in existing_paths]
+        duplicate_count = len(file_paths) - len(new_files)
+
+        if duplicate_count > 0:
+            messagebox.showinfo(
+                "Duplicate Files",
+                f"Skipped {duplicate_count} duplicate file(s). "
+                f"Added {len(new_files)} new file(s)."
+            )
+
+        # Add new files to state
+        for path in new_files:
+            file_obj = ProcessingFile(
+                id=str(len(self.state.selected_files) + 1),
+                path=path,
+                name=os.path.basename(path)
+            )
+            self.state.selected_files.append(file_obj)
+
+        # Update UI
+        self._update_file_list()
+
+        if new_files:
+            self.state.add_log(f"Added {len(new_files)} file(s) via drag-drop")
