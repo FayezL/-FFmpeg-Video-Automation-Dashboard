@@ -74,17 +74,97 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
         options_content = ctk.CTkFrame(options_frame, fg_color="transparent")
         options_content.pack(fill="x", padx=20, pady=(0, 20))
         
-        # Cut Last 5 Minutes
+        # Cut Last Option
         self.cut_checkbox = ctk.CTkCheckBox(
             options_content,
-            text="Cut Last 5 Minutes",
+            text="Cut Last:",
             command=self._on_cut_toggle,
             font=ctk.CTkFont(size=14)
         )
         self.cut_checkbox.pack(anchor="w", pady=5)
         if self.state.cut_last_5_minutes:
             self.cut_checkbox.select()
-        
+
+        # Cut time inputs
+        self.cut_time_frame = ctk.CTkFrame(options_content, fg_color="transparent")
+        self.cut_time_frame.pack(anchor="w", padx=30, pady=(5, 5))
+
+        ctk.CTkLabel(
+            self.cut_time_frame,
+            text="Minutes:",
+            font=ctk.CTkFont(size=12),
+            text_color="#94a3b8"
+        ).pack(side="left", padx=(0, 8))
+
+        self.cut_minutes_entry = ctk.CTkEntry(
+            self.cut_time_frame,
+            width=70,
+            height=28
+        )
+        self.cut_minutes_entry.pack(side="left", padx=(0, 8))
+        self.cut_minutes_entry.insert(0, "5")
+
+        ctk.CTkLabel(
+            self.cut_time_frame,
+            text="Seconds:",
+            font=ctk.CTkFont(size=12),
+            text_color="#94a3b8"
+        ).pack(side="left", padx=(0, 8))
+
+        self.cut_seconds_entry = ctk.CTkEntry(
+            self.cut_time_frame,
+            width=70,
+            height=28
+        )
+        self.cut_seconds_entry.pack(side="left")
+        self.cut_seconds_entry.insert(0, "0")
+
+        if not self.state.cut_last_5_minutes:
+            self.cut_time_frame.pack_forget()
+
+        # Processing Profile
+        from src.state import PROCESSING_PROFILES
+
+        ctk.CTkLabel(
+            options_content,
+            text="",
+            height=5
+        ).pack()  # Spacer
+
+        profile_label = ctk.CTkLabel(
+            options_content,
+            text="Processing Profile:",
+            font=ctk.CTkFont(size=14, weight="bold")
+        )
+        profile_label.pack(anchor="w", pady=(10, 5))
+
+        profile_frame = ctk.CTkFrame(options_content, fg_color="transparent")
+        profile_frame.pack(anchor="w", padx=30, pady=(0, 5))
+
+        self.profile_var = ctk.StringVar(value=self.state.processing_profile)
+
+        profile_menu = ctk.CTkOptionMenu(
+            profile_frame,
+            values=list(PROCESSING_PROFILES.keys()),
+            variable=self.profile_var,
+            command=self._on_profile_change,
+            width=300,
+            height=36
+        )
+        profile_menu.pack(side="left")
+
+        # Profile description
+        self.profile_desc_label = ctk.CTkLabel(
+            options_content,
+            text=PROCESSING_PROFILES[self.state.processing_profile].description,
+            font=ctk.CTkFont(size=11),
+            text_color="#94a3b8",
+            wraplength=450,
+            anchor="w",
+            justify="left"
+        )
+        self.profile_desc_label.pack(anchor="w", padx=30, pady=(0, 10))
+
         # Apply Delogo
         self.delogo_checkbox = ctk.CTkCheckBox(
             options_content,
@@ -218,7 +298,21 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
         checked = self.cut_checkbox.get() == 1
         self.state.cut_last_5_minutes = checked
         self.state.cut_mode = CutMode.CUT_LAST if checked else CutMode.NONE
-        self.state.cut_minutes = 5.0
+
+        if checked:
+            self.cut_time_frame.pack(anchor="w", padx=30, pady=(5, 5))
+            try:
+                self.state.cut_minutes = float(self.cut_minutes_entry.get() or "5")
+            except ValueError:
+                self.state.cut_minutes = 5.0
+            try:
+                self.state.cut_seconds = float(self.cut_seconds_entry.get() or "0")
+            except ValueError:
+                self.state.cut_seconds = 0.0
+        else:
+            self.cut_time_frame.pack_forget()
+            self.state.cut_minutes = 0.0
+            self.state.cut_seconds = 0.0
     
     def _on_delogo_toggle(self):
         """Handle delogo checkbox toggle"""
@@ -243,15 +337,45 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
                 params.h = value
         except ValueError:
             pass
-    
+
+    def _on_profile_change(self, value: str):
+        """Update processing profile and description"""
+        from src.state import PROCESSING_PROFILES
+        self.state.processing_profile = value
+        self.profile_desc_label.configure(
+            text=PROCESSING_PROFILES[value].description
+        )
+
+    def _validate_inputs(self) -> tuple[bool, str]:
+        """Validate user inputs before processing"""
+        if self.cut_checkbox.get() == 1:
+            try:
+                mins = float(self.cut_minutes_entry.get() or "0")
+                secs = float(self.cut_seconds_entry.get() or "0")
+                if mins < 0 or secs < 0:
+                    return False, "Time values cannot be negative"
+                if mins == 0 and secs == 0:
+                    return False, "Cut time cannot be zero when cut is enabled"
+            except ValueError:
+                return False, "Minutes and seconds must be valid numbers"
+        return True, ""
+
     def _process_file(self):
         """Process the selected file"""
         if not self.selected_file:
             self.state.add_log("Error: No file selected")
             return
-        
+
         if not self.state.output_folder:
             self.state.add_log("Error: No output folder selected")
+            return
+
+        # Validate inputs
+        valid, error_msg = self._validate_inputs()
+        if not valid:
+            from tkinter import messagebox
+            messagebox.showerror("Invalid Input", error_msg)
+            self.state.add_log(f"Validation error: {error_msg}")
             return
         
         # Show progress frame

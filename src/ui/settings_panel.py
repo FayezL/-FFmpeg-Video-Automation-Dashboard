@@ -45,32 +45,51 @@ class SettingsPanel(ctk.CTkScrollableFrame):
     
     def _create_ffmpeg_section(self):
         """Create FFmpeg settings section"""
+        from src.state import PROCESSING_PROFILES
+
         ffmpeg_frame = ctk.CTkFrame(self, fg_color="#1e293b")
         ffmpeg_frame.pack(fill="x", pady=(0, 20))
-        
+
         title = ctk.CTkLabel(
             ffmpeg_frame,
             text="FFmpeg Settings",
             font=ctk.CTkFont(size=18, weight="bold")
         )
         title.pack(anchor="w", padx=20, pady=(20, 15))
-        
+
         content = ctk.CTkFrame(ffmpeg_frame, fg_color="transparent")
         content.pack(fill="x", padx=20, pady=(0, 20))
-        
-        info_text = (
-            "FFmpeg settings are currently hardcoded to ensure compatibility:\n\n"
-            "• Video Codec: libx264\n"
-            "• Preset: fast\n"
-            "• CRF: 23\n"
-            "• Pixel Format: yuv420p\n"
-            "• Audio Codec: AAC\n"
-            "• Audio Bitrate: 192k\n"
-            "• Faststart: Enabled\n\n"
-            "These settings provide a good balance between quality and file size,\n"
-            "ensuring compatibility with iOS devices and TV boxes."
-        )
-        
+
+        # Get current profile
+        profile = PROCESSING_PROFILES[self.state.processing_profile]
+
+        # Build dynamic info text
+        info_text = f"Current Processing Profile: {profile.name}\n"
+        info_text += f"{profile.description}\n\n"
+        info_text += f"• Video Codec: {profile.video_codec}\n"
+        info_text += f"• Preset: {profile.video_preset}\n"
+
+        if profile.video_crf is not None:
+            info_text += f"• CRF (Quality): {profile.video_crf}\n"
+        elif profile.video_bitrate is not None:
+            info_text += f"• Video Bitrate: {profile.video_bitrate}\n"
+
+        info_text += f"• Pixel Format: {profile.pixel_format}\n"
+
+        if profile.x264_profile:
+            info_text += f"• H.264 Profile: {profile.x264_profile}\n"
+        if profile.x264_level:
+            info_text += f"• H.264 Level: {profile.x264_level}\n"
+
+        info_text += f"• Audio Codec: {profile.audio_codec}\n"
+        info_text += f"• Audio Bitrate: {profile.audio_bitrate}\n"
+        info_text += f"• Faststart: {'Enabled' if profile.use_faststart else 'Disabled'}\n"
+
+        if profile.max_width or profile.max_height:
+            info_text += f"• Max Resolution: {profile.max_width or 'unlimited'}x{profile.max_height or 'unlimited'}\n"
+
+        info_text += "\n💡 You can change the processing profile in the Batch Processor or Single File view."
+
         info_label = ctk.CTkLabel(
             content,
             text=info_text,
@@ -98,12 +117,14 @@ class SettingsPanel(ctk.CTkScrollableFrame):
         
         about_text = (
             "MagicTVBox - FFmpeg Video Automation Dashboard\n\n"
-            "Version: 1.0.0\n"
+            "Version: 2.0.0\n"
             "A modern desktop application for automating video processing tasks.\n\n"
             "Features:\n"
             "• Batch processing of video files\n"
-            "• Automatic cutting of last 5 minutes\n"
+            "• Flexible trim/cut options with seconds precision\n"
+            "• Multiple processing profiles (Universal, High Quality, Small File, iOS)\n"
             "• Delogo filter for removing watermarks\n"
+            "• Universal streaming compatibility (iPhone, Android, TVs, web)\n"
             "• Real-time progress tracking\n"
             "• Modern dark-themed UI\n\n"
             "Built with Python and CustomTkinter"

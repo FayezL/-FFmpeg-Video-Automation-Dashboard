@@ -67,7 +67,65 @@ class VideoProcessor:
         except Exception as e:
             self.state.add_log(f"Error probing video: {str(e)}")
             raise
-    
+
+    def _build_ffmpeg_params(self, output_path: str) -> dict:
+        """Build FFmpeg parameters from processing profile"""
+        from src.state import PROCESSING_PROFILES
+
+        profile = PROCESSING_PROFILES[self.state.processing_profile]
+
+        params = {
+            'vcodec': profile.video_codec,
+            'preset': profile.video_preset,
+            'pix_fmt': profile.pixel_format,
+            'acodec': profile.audio_codec,
+            'audio_bitrate': profile.audio_bitrate,
+        }
+
+        # Use CRF or bitrate (mutually exclusive)
+        if profile.video_crf is not None:
+            params['crf'] = profile.video_crf
+        elif profile.video_bitrate is not None:
+            params['video_bitrate'] = profile.video_bitrate
+
+        # Add faststart for MP4 files
+        if profile.use_faststart and output_path.lower().endswith('.mp4'):
+            params['movflags'] = '+faststart'
+
+        return params
+
+    def _build_ffmpeg_cmd_params(self, output_path: str) -> list:
+        """Build FFmpeg command-line parameters from processing profile"""
+        from src.state import PROCESSING_PROFILES
+
+        profile = PROCESSING_PROFILES[self.state.processing_profile]
+
+        cmd = [
+            '-c:v', profile.video_codec,
+            '-preset', profile.video_preset,
+            '-pix_fmt', profile.pixel_format,
+            '-c:a', profile.audio_codec,
+            '-b:a', profile.audio_bitrate,
+        ]
+
+        # Use CRF or bitrate (mutually exclusive)
+        if profile.video_crf is not None:
+            cmd.extend(['-crf', str(profile.video_crf)])
+        elif profile.video_bitrate is not None:
+            cmd.extend(['-b:v', profile.video_bitrate])
+
+        # Add x264-specific options if specified
+        if profile.x264_profile or profile.x264_level:
+            x264_opts = []
+            if profile.x264_profile:
+                x264_opts.append(f"profile={profile.x264_profile}")
+            if profile.x264_level:
+                x264_opts.append(f"level={profile.x264_level}")
+            if x264_opts:
+                cmd.extend(['-x264-params', ':'.join(x264_opts)])
+
+        return cmd
+
     def process_video(
         self,
         input_path: str,
@@ -108,17 +166,17 @@ class VideoProcessor:
                 total_duration = metadata['duration']
                 
                 if self.state.cut_mode == CutMode.CUT_LAST:
-                    cut_seconds = self.state.cut_minutes * 60
+                    cut_seconds = self.state.cut_total_seconds
                     duration = max(0, total_duration - cut_seconds)
                     start_time = 0.0
                 elif self.state.cut_mode == CutMode.CUT_FIRST:
-                    start_time = self.state.cut_minutes * 60
+                    start_time = self.state.cut_total_seconds
                     duration = max(0, total_duration - start_time)
                 elif self.state.cut_mode == CutMode.CUT_RANGE:
-                    start_time = self.state.cut_start_minutes * 60
-                    if self.state.cut_end_minutes is not None:
-                        end_sec = self.state.cut_end_minutes * 60
-                        duration = max(0, end_sec - start_time)
+                    start_time = self.state.cut_start_total_seconds
+                    end_seconds = self.state.cut_end_total_seconds
+                    if end_seconds is not None:
+                        duration = max(0, end_seconds - start_time)
                     else:
                         duration = max(0, total_duration - start_time)
             else:
@@ -177,17 +235,12 @@ class VideoProcessor:
                     h=params.h
                 )
             
-            # Build output stream
+            # Build output stream with profile parameters
+            params = self._build_ffmpeg_params(output_path)
             output = ffmpeg.output(
                 input_stream,
                 output_path,
-                vcodec='libx264',
-                preset='fast',
-                crf=23,
-                pix_fmt='yuv420p',
-                acodec='aac',
-                audio_bitrate='192k',
-                movflags='+faststart'
+                **params
             )
             
             if on_log:
@@ -230,19 +283,16 @@ class VideoProcessor:
                 '-vf', f'delogo=x={params.x}:y={params.y}:w={params.w}:h={params.h}'
             ])
         
-        # Encoding settings (no -progress: parse time= from stderr for compatibility)
-        cmd.extend([
-            '-c:v', 'libx264',
-            '-preset', 'fast',
-            '-crf', '23',
-            '-pix_fmt', 'yuv420p',
-            '-c:a', 'aac',
-            '-b:a', '192k',
-            '-y',  # Overwrite output
-        ])
-        # Faststart only for MP4
-        if output_path.lower().endswith('.mp4'):
+        # Encoding settings from profile
+        cmd.extend(self._build_ffmpeg_cmd_params(output_path))
+        cmd.extend(['-y'])  # Overwrite output
+
+        # Faststart for MP4 (from profile)
+        from src.state import PROCESSING_PROFILES
+        profile = PROCESSING_PROFILES[self.state.processing_profile]
+        if profile.use_faststart and output_path.lower().endswith('.mp4'):
             cmd.extend(['-movflags', '+faststart'])
+
         cmd.append(output_path)
         
         if on_log:

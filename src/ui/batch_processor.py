@@ -54,7 +54,10 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         
         # === TRIM/CUT SECTION ===
         self._create_trim_section()
-        
+
+        # === PROCESSING PROFILE SECTION ===
+        self._create_profile_section()
+
         # === PROCESSING OPTIONS (Delogo) ===
         self._create_delogo_section()
         
@@ -185,38 +188,122 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         # Cut last/first minutes
         self.cut_minutes_frame = ctk.CTkFrame(self.cut_params_row, fg_color="transparent")
         self.cut_minutes_frame.pack(side="left", padx=(100, 0))
-        
+
         ctk.CTkLabel(
             self.cut_minutes_frame,
             text="Minutes:",
             font=ctk.CTkFont(size=12),
             text_color="#94a3b8"
         ).pack(side="left", padx=(0, 8))
-        
+
         self.cut_minutes_entry = ctk.CTkEntry(
             self.cut_minutes_frame,
             width=70,
             height=28
         )
-        self.cut_minutes_entry.pack(side="left")
+        self.cut_minutes_entry.pack(side="left", padx=(0, 8))
         self.cut_minutes_entry.insert(0, "5")
+
+        ctk.CTkLabel(
+            self.cut_minutes_frame,
+            text="Seconds:",
+            font=ctk.CTkFont(size=12),
+            text_color="#94a3b8"
+        ).pack(side="left", padx=(0, 8))
+
+        self.cut_seconds_entry = ctk.CTkEntry(
+            self.cut_minutes_frame,
+            width=70,
+            height=28
+        )
+        self.cut_seconds_entry.pack(side="left")
+        self.cut_seconds_entry.insert(0, "0")
         
         # Cut range (start, end)
         self.cut_range_frame = ctk.CTkFrame(self.cut_params_row, fg_color="transparent")
         self.cut_range_frame.pack(side="left", padx=(100, 0))
-        
-        ctk.CTkLabel(self.cut_range_frame, text="Start (min):", font=ctk.CTkFont(size=12), text_color="#94a3b8").pack(side="left", padx=(0, 4))
-        self.cut_start_entry = ctk.CTkEntry(self.cut_range_frame, width=60, height=28)
-        self.cut_start_entry.pack(side="left", padx=(0, 12))
+
+        # Start time
+        ctk.CTkLabel(self.cut_range_frame, text="Start:", font=ctk.CTkFont(size=12), text_color="#94a3b8").pack(side="left", padx=(0, 4))
+        self.cut_start_entry = ctk.CTkEntry(self.cut_range_frame, width=50, height=28)
+        self.cut_start_entry.pack(side="left", padx=(0, 2))
         self.cut_start_entry.insert(0, "0")
-        
-        ctk.CTkLabel(self.cut_range_frame, text="End (min):", font=ctk.CTkFont(size=12), text_color="#94a3b8").pack(side="left", padx=(0, 4))
-        self.cut_end_entry = ctk.CTkEntry(self.cut_range_frame, width=60, height=28)
-        self.cut_end_entry.pack(side="left")
+        ctk.CTkLabel(self.cut_range_frame, text="m", font=ctk.CTkFont(size=11), text_color="#94a3b8").pack(side="left", padx=(0, 4))
+
+        self.cut_start_sec_entry = ctk.CTkEntry(self.cut_range_frame, width=50, height=28)
+        self.cut_start_sec_entry.pack(side="left", padx=(0, 2))
+        self.cut_start_sec_entry.insert(0, "0")
+        ctk.CTkLabel(self.cut_range_frame, text="s", font=ctk.CTkFont(size=11), text_color="#94a3b8").pack(side="left", padx=(0, 12))
+
+        # End time
+        ctk.CTkLabel(self.cut_range_frame, text="End:", font=ctk.CTkFont(size=12), text_color="#94a3b8").pack(side="left", padx=(0, 4))
+        self.cut_end_entry = ctk.CTkEntry(self.cut_range_frame, width=50, height=28)
+        self.cut_end_entry.pack(side="left", padx=(0, 2))
         self.cut_end_entry.insert(0, "")
+        ctk.CTkLabel(self.cut_range_frame, text="m", font=ctk.CTkFont(size=11), text_color="#94a3b8").pack(side="left", padx=(0, 4))
+
+        self.cut_end_sec_entry = ctk.CTkEntry(self.cut_range_frame, width=50, height=28)
+        self.cut_end_sec_entry.pack(side="left", padx=(0, 2))
+        self.cut_end_sec_entry.insert(0, "")
+        ctk.CTkLabel(self.cut_range_frame, text="s", font=ctk.CTkFont(size=11), text_color="#94a3b8").pack(side="left")
         
         self._on_cut_mode_change()
-    
+
+    def _create_profile_section(self):
+        """Processing profile/quality section"""
+        from src.state import PROCESSING_PROFILES
+
+        profile_frame = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=8)
+        profile_frame.pack(fill="x", pady=(0, 12))
+
+        section_header = ctk.CTkFrame(profile_frame, fg_color="transparent")
+        section_header.pack(fill="x", padx=16, pady=(16, 12))
+
+        ctk.CTkLabel(
+            section_header,
+            text="🎬 Processing Profile",
+            font=ctk.CTkFont(size=16, weight="bold")
+        ).pack(anchor="w")
+
+        content = ctk.CTkFrame(profile_frame, fg_color="transparent")
+        content.pack(fill="x", padx=16, pady=(0, 16))
+
+        # Profile selector row
+        profile_row = ctk.CTkFrame(content, fg_color="transparent")
+        profile_row.pack(fill="x", pady=(0, 8))
+
+        ctk.CTkLabel(
+            profile_row,
+            text="Quality preset:",
+            font=ctk.CTkFont(size=13),
+            width=120,
+            anchor="w"
+        ).pack(side="left", padx=(0, 12))
+
+        self.profile_var = ctk.StringVar(value=self.state.processing_profile)
+
+        profile_menu = ctk.CTkOptionMenu(
+            profile_row,
+            values=list(PROCESSING_PROFILES.keys()),
+            variable=self.profile_var,
+            command=self._on_profile_change,
+            width=250,
+            height=36
+        )
+        profile_menu.pack(side="left")
+
+        # Profile description
+        self.profile_desc_label = ctk.CTkLabel(
+            content,
+            text=PROCESSING_PROFILES[self.state.processing_profile].description,
+            font=ctk.CTkFont(size=12),
+            text_color="#94a3b8",
+            wraplength=600,
+            anchor="w",
+            justify="left"
+        )
+        self.profile_desc_label.pack(anchor="w", pady=(8, 0), padx=(120, 0))
+
     def _create_delogo_section(self):
         """Delogo filter section"""
         delogo_frame = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=8)
@@ -600,24 +687,45 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
     def _on_overwrite_toggle(self):
         """Toggle overwrite existing"""
         self.state.overwrite_existing = self.overwrite_cb.get() == 1
-    
+
+    def _on_profile_change(self, value: str):
+        """Update processing profile and description"""
+        from src.state import PROCESSING_PROFILES
+        self.state.processing_profile = value
+        self.profile_desc_label.configure(
+            text=PROCESSING_PROFILES[value].description
+        )
+
     def _sync_state_from_ui(self):
         """Sync cut/trim and output options from UI to state"""
         self.state.cut_mode = CutMode(self.cut_mode_var.get())
         try:
-            self.state.cut_minutes = float(self.cut_minutes_entry.get() or "5")
+            self.state.cut_minutes = float(self.cut_minutes_entry.get() or "0")
         except ValueError:
-            self.state.cut_minutes = 5.0
+            self.state.cut_minutes = 0.0
+        try:
+            self.state.cut_seconds = float(self.cut_seconds_entry.get() or "0")
+        except ValueError:
+            self.state.cut_seconds = 0.0
         try:
             self.state.cut_start_minutes = float(self.cut_start_entry.get() or "0")
         except ValueError:
             self.state.cut_start_minutes = 0.0
         try:
+            self.state.cut_start_seconds = float(self.cut_start_sec_entry.get() or "0")
+        except ValueError:
+            self.state.cut_start_seconds = 0.0
+        try:
             end = self.cut_end_entry.get().strip()
             self.state.cut_end_minutes = float(end) if end else None
         except ValueError:
             self.state.cut_end_minutes = None
-        
+        try:
+            end_sec = self.cut_end_sec_entry.get().strip()
+            self.state.cut_end_seconds = float(end_sec) if end_sec else None
+        except ValueError:
+            self.state.cut_end_seconds = None
+
         self.state.output_format = self.format_var.get()
         self.state.output_prefix = self.prefix_entry.get()
         self.state.output_suffix = self.suffix_entry.get()
@@ -644,6 +752,45 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             messagebox.showerror("Error", f"Could not run FFmpeg: {e}")
             return False
     
+    def _validate_inputs(self) -> tuple[bool, str]:
+        """Validate user inputs before processing"""
+        # Validate time inputs are numeric
+        try:
+            mins = float(self.cut_minutes_entry.get() or "0")
+            secs = float(self.cut_seconds_entry.get() or "0")
+            if mins < 0 or secs < 0:
+                return False, "Time values cannot be negative"
+        except ValueError:
+            return False, "Minutes and seconds must be valid numbers"
+
+        # Validate range mode
+        if self.state.cut_mode == CutMode.CUT_RANGE:
+            try:
+                start_mins = float(self.cut_start_entry.get() or "0")
+                start_secs = float(self.cut_start_sec_entry.get() or "0")
+                end_mins_str = self.cut_end_entry.get().strip()
+                end_secs_str = self.cut_end_sec_entry.get().strip()
+
+                if start_mins < 0 or start_secs < 0:
+                    return False, "Start time cannot be negative"
+
+                if end_mins_str or end_secs_str:
+                    end_mins = float(end_mins_str) if end_mins_str else 0
+                    end_secs = float(end_secs_str) if end_secs_str else 0
+
+                    if end_mins < 0 or end_secs < 0:
+                        return False, "End time cannot be negative"
+
+                    start_total = (start_mins * 60) + start_secs
+                    end_total = (end_mins * 60) + end_secs
+
+                    if end_total <= start_total:
+                        return False, "End time must be after start time"
+            except ValueError:
+                return False, "Range times must be valid numbers"
+
+        return True, ""
+
     def _start_processing(self):
         """Start batch processing"""
         if not self.state.selected_files:
@@ -656,7 +803,14 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             return
         if not self._check_ffmpeg():
             return
-        
+
+        # Validate inputs
+        valid, error_msg = self._validate_inputs()
+        if not valid:
+            messagebox.showerror("Invalid Input", error_msg)
+            self.state.add_log(f"Validation error: {error_msg}")
+            return
+
         self._sync_state_from_ui()
         
         thread = threading.Thread(target=self._process_thread, daemon=True)
