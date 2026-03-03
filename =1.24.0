@@ -1,0 +1,12 @@
+Defaulting to user installation because normal site-packages is not writeable
+Collecting opencv-python-headless
+  Downloading opencv_python_headless-4.13.0.92-cp37-abi3-win_amd64.whl.metadata (20 kB)
+Collecting numpy
+  Downloading numpy-2.4.2-cp313-cp313-win_amd64.whl.metadata (6.6 kB)
+Downloading opencv_python_headless-4.13.0.92-cp37-abi3-win_amd64.whl (40.1 MB)
+   ---------------------------------------- 40.1/40.1 MB 3.7 MB/s  0:00:11
+Downloading numpy-2.4.2-cp313-cp313-win_amd64.whl (12.3 MB)
+   ---------------------------------------- 12.3/12.3 MB 3.6 MB/s  0:00:03
+Installing collected packages: numpy, opencv-python-headless
+
+Successfully installed numpy-2.4.2 opencv-python-headless-4.13.0.92

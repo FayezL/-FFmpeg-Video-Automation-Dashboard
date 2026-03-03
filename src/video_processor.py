@@ -131,10 +131,18 @@ class VideoProcessor:
         input_path: str,
         output_path: str,
         on_progress: Optional[Callable[[float], None]] = None,
-        on_log: Optional[Callable[[str], None]] = None
+        on_log: Optional[Callable[[str], None]] = None,
+        processing_file: Optional[ProcessingFile] = None
     ) -> Tuple[bool, Optional[str]]:
         """
         Process a single video file
+        
+        Args:
+            input_path: Input video file path
+            output_path: Output video file path
+            on_progress: Optional progress callback (0.0-1.0)
+            on_log: Optional log callback
+            processing_file: Optional ProcessingFile with per-file cut times
         
         Returns:
             (success, error_message) - error_message is set when success is False
@@ -157,11 +165,23 @@ class VideoProcessor:
                 return False, err
         
         try:
-            # Calculate trim parameters based on cut mode
+            # Calculate trim parameters: use per-file cut times if set, else global settings
             duration = None
             start_time = 0.0
             
-            if self.state.cut_mode != CutMode.NONE:
+            if processing_file and processing_file.use_custom_cut:
+                # Per-file custom cut times
+                if processing_file.custom_cut_start_seconds is not None:
+                    start_time = processing_file.custom_cut_start_seconds
+                if processing_file.custom_cut_end_seconds is not None:
+                    duration = processing_file.custom_cut_end_seconds - start_time
+                else:
+                    # End not set = to end of video
+                    metadata = self.probe_video(input_path)
+                    total_duration = metadata['duration']
+                    duration = max(0, total_duration - start_time)
+            elif self.state.cut_mode != CutMode.NONE:
+                # Use global cut settings
                 metadata = self.probe_video(input_path)
                 total_duration = metadata['duration']
                 
@@ -366,60 +386,100 @@ class VideoProcessor:
     def process_queue(
         self,
         files: List[ProcessingFile],
-        on_file_error: Optional[Callable[[str, str], None]] = None
+        on_file_error: Optional[Callable[[str, str], None]] = None,
+        output_folder_override: Optional[str] = None,
+        on_complete: Optional[Callable[[], None]] = None
     ) -> None:
-        """Process a queue of files. on_file_error(name, error_msg) called when a file fails."""
-        self.state.is_processing = True
+        """Process a queue of files using parallel processing.
+        output_folder_override: use this folder for outputs (e.g. for Task 2).
+        on_complete: called when the whole batch finishes (so UI can clear task running state).
+        """
+        from src.parallel_processor import ParallelProcessor
+        
+        if on_complete is None:
+            self.state.is_processing = True
+        max_workers = self.state.parallel_config.max_workers
+        
+        parallel = ParallelProcessor(
+            self.state, self, max_workers=max_workers,
+            output_folder_override=output_folder_override or None
+        )
+        
+        def on_file_start(file: ProcessingFile):
+            file.status = FileStatus.PROCESSING
+            file.progress = 0.0
+            self.state.add_log(f"\n=== Processing: {file.name} ===\n")
+        
+        def on_file_complete(file: ProcessingFile, success: bool, error_msg: Optional[str]):
+            if success:
+                file.status = FileStatus.COMPLETED
+                file.progress = 1.0
+                self.state.add_log(f"✓ Completed: {file.name}\n")
+            else:
+                file.status = FileStatus.ERROR
+                file.error = error_msg
+                self.state.add_log(f"✗ Failed: {file.name} - {error_msg}\n")
+                if on_file_error:
+                    on_file_error(file.name, error_msg or "Unknown error")
+        
+        def on_progress(file_id: str, percent: float):
+            for f in files:
+                if f.id == file_id:
+                    f.progress = percent
+                    break
         
         try:
-            for i, file in enumerate(files):
-                if not self.state.is_processing:
-                    self.state.add_log("Processing stopped by user.\n")
-                    break
-                
-                self.state.current_file_index = i
-                file.status = FileStatus.PROCESSING
-                file.progress = 0.0
-                
-                self.state.add_log(f"\n=== Processing {i+1}/{len(files)}: {file.name} ===\n")
-                
-                # Determine output path with format, prefix, suffix
-                output_folder = self.state.output_folder or os.path.dirname(file.path)
-                if self.state.create_output_subfolder:
-                    output_folder = os.path.join(output_folder, "output")
-                    os.makedirs(output_folder, exist_ok=True)
-                
-                base_name = os.path.splitext(file.name)[0]
-                ext = f".{self.state.output_format}"
-                output_name = f"{self.state.output_prefix}{base_name}{self.state.output_suffix}{ext}"
-                output_path = os.path.join(output_folder, output_name)
-                
-                def on_progress(percent: float):
-                    file.progress = percent
-                
-                def on_log(message: str):
-                    self.state.add_log(message)
-                
-                success, error_msg = self.process_video(
-                    file.path,
-                    output_path,
-                    on_progress=on_progress,
-                    on_log=on_log
-                )
-                
-                if success:
-                    file.status = FileStatus.COMPLETED
-                    file.progress = 100.0
-                    self.state.add_log(f"✓ Completed: {file.name}\n")
-                else:
-                    file.status = FileStatus.ERROR
-                    file.error = error_msg or "Processing failed"
-                    self.state.add_log(f"✗ Error: {file.name}\n{file.error}\n")
-                    if on_file_error:
-                        on_file_error(file.name, file.error)
-            
+            parallel.process_batch(
+                files,
+                on_file_start=on_file_start,
+                on_file_complete=on_file_complete,
+                on_progress=on_progress
+            )
+            # Wait for all workers to finish
+            for worker in parallel._workers:
+                worker.join()
             self.state.add_log("\n=== All files processed ===\n")
         finally:
-            self.state.is_processing = False
+            if on_complete is None:
+                self.state.is_processing = False
+            if on_complete:
+                on_complete()
+    
+    def _get_output_path(
+        self,
+        input_path: str,
+        output_folder_override: Optional[str] = None,
+        file_index: Optional[int] = None,
+    ) -> str:
+        """Get output path for a file.
+
+        When the Rename Plan is enabled, the output filename becomes:
+            {rename_base}{N:0<pad>d}{ext}
+        where N = rename_start + file_index (0-based position in the batch).
+
+        Works for any batch size — 1 file, 30 episodes, or 50+.
+        Falls back to the original filename (+ prefix/suffix) when rename is off
+        or the base name is empty.
+        """
+        base = output_folder_override if output_folder_override is not None else self.state.output_folder
+        output_folder = base or os.path.dirname(input_path)
+        if self.state.create_output_subfolder:
+            output_folder = os.path.join(output_folder, "output")
+            os.makedirs(output_folder, exist_ok=True)
+
+        ext = f".{self.state.output_format}"
+
+        # --- Rename Plan (sequential episode numbering) ---
+        if self.state.rename_enabled and self.state.rename_base.strip():
+            ep_number = self.state.rename_start + (file_index or 0)
+            padded = str(ep_number).zfill(self.state.rename_pad)
+            output_name = f"{self.state.rename_base.strip()}{padded}{ext}"
+        else:
+            # Original behaviour: keep input filename + optional prefix/suffix
+            base_name = os.path.splitext(os.path.basename(input_path))[0]
+            output_name = f"{self.state.output_prefix}{base_name}{self.state.output_suffix}{ext}"
+
+        return os.path.join(output_folder, output_name)
+
 
 

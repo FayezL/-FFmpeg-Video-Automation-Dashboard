@@ -12,7 +12,7 @@ class LogsPanel(ctk.CTkScrollableFrame):
     """Logs panel view"""
     
     def __init__(self, parent, state: AppState):
-        super().__init__(parent, fg_color="#0f172a")
+        super().__init__(parent, fg_color="#f0f9ff")
         self.state = state
         
         self._create_ui()
@@ -43,7 +43,7 @@ class LogsPanel(ctk.CTkScrollableFrame):
             title_frame,
             text="FFmpeg processing output and messages",
             font=ctk.CTkFont(size=14),
-            text_color="#94a3b8"
+            text_color="#bae6fd"
         )
         subtitle.pack(anchor="w", pady=(5, 0))
         
@@ -53,24 +53,24 @@ class LogsPanel(ctk.CTkScrollableFrame):
             text="Clear Logs",
             command=self._clear_logs,
             width=120,
-            fg_color="#dc2626",
-            hover_color="#b91c1c"
+            fg_color="#B91C1C",
+            hover_color="#B91C1C"
         )
         clear_btn.pack(side="right")
         
         # Logs display
-        self.logs_frame = ctk.CTkFrame(self, fg_color="#1e293b")
+        self.logs_frame = ctk.CTkFrame(self, fg_color="#f0f9ff")
         self.logs_frame.pack(fill="both", expand=True)
         
         # Text widget for logs (using tkinter Text for better performance)
         self.logs_text = tk.Text(
             self.logs_frame,
-            bg="#0f172a",
+            bg="#f0f9ff",
             fg="#f1f5f9",
             font=("Consolas", 11),
             wrap=tk.WORD,
             insertbackground="#f1f5f9",
-            selectbackground="#334155"
+            selectbackground="#0369a1"
         )
         self.logs_text.pack(fill="both", expand=True, padx=20, pady=20)
         

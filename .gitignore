@@ -30,4 +30,29 @@ Thumbs.db
 out/
 release/
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+*.pyc
 
+# PyInstaller
+build/
+dist/
+*.spec.bak
+*.exe
+*.dll
+*.pyd
+
+# Project-specific
+.specify/memory/agent-context.md
