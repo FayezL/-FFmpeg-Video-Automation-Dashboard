@@ -1,0 +1,5 @@
+# Optional: Google Cloud Vision API for more accurate logo detection
+# Install with: pip install -r requirements-ai.txt
+# Then set GOOGLE_APPLICATION_CREDENTIALS to your service account JSON path.
+# See docs/LOGO_DETECTION_AI_OPTIONS.md for setup.
+google-cloud-vision>=3.0.0

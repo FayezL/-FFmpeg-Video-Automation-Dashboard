@@ -46,5 +46,13 @@ ENV/
 htmlcov/
 *.pyc
 
+# PyInstaller
+build/
+dist/
+*.spec.bak
+*.exe
+*.dll
+*.pyd
+
 # Project-specific
 .specify/memory/agent-context.md

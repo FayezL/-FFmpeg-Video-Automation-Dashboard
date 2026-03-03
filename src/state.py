@@ -33,6 +33,10 @@ class ProcessingFile:
     status: FileStatus = FileStatus.PENDING
     progress: float = 0.0
     error: Optional[str] = None
+    # Per-file cut times (override global settings if set)
+    use_custom_cut: bool = False
+    custom_cut_start_seconds: Optional[float] = None  # Start time for this file
+    custom_cut_end_seconds: Optional[float] = None    # End time (None = to end)
 
 
 @dataclass
@@ -220,9 +224,25 @@ class AppState:
         self.create_output_subfolder: bool = False  # Create "output" subfolder
         self.overwrite_existing: bool = True
 
+        # Rename Plan — sequential episode numbering for any batch size (1 to 50+)
+        # When enabled, output files are named: {rename_base}{N:0rename_pad}{ext}
+        # e.g. rename_base="hamo", rename_start=1, rename_pad=2 → hamo01, hamo02 …
+        self.rename_enabled: bool = False   # Toggle rename plan on/off
+        self.rename_base: str = ""          # Base name  (e.g. "hamo")
+        self.rename_start: int = 1          # First episode number (default 1)
+        self.rename_pad: int = 2            # Zero-pad width: 2→"01", 3→"001"
+
         # Processing state
         self.is_processing: bool = False
         self.current_file_index: int = 0
+
+        # Second task slot (Task 2) - separate file list and output so you can run two batches and know what is where
+        self.task2_files: List[ProcessingFile] = []
+        self.task2_output_folder: Optional[str] = None
+        self.task2_processing: bool = False
+
+        # Additional task slots (Task 3, 4, ...) - each dict: files, output_folder, processing
+        self.extra_task_slots: List[Dict[str, Any]] = []
 
         # Logs
         self.logs: List[str] = []
@@ -249,7 +269,14 @@ class AppState:
 
         # Batch state management (T020)
         self.current_batch_state: Optional[Any] = None  # Will be BatchState once defined
-        
+
+        # Logo detection (Phase 4 - User Story 2) - Placeholders for MVP
+        self.detection_enabled: bool = False  # Enable logo detection feature
+        self.detection_results: List[Any] = []  # Will store DetectionResult objects
+        self.active_profile: Optional[str] = None  # Name of active detection profile
+        self.detection_progress: float = 0.0  # Detection progress (0.0-1.0)
+        self.detection_status: str = "idle"  # idle, running, completed, cancelled, error
+
     def add_log(self, message: str):
         """Add a log message and notify callbacks"""
         self.logs.append(message)

@@ -19,7 +19,8 @@ class ParallelProcessor:
         self,
         state: AppState,
         video_processor: VideoProcessor,
-        max_workers: int = 2
+        max_workers: int = 2,
+        output_folder_override: Optional[str] = None
     ):
         """
         Initialize parallel processor.
@@ -28,10 +29,12 @@ class ParallelProcessor:
             state: Application state
             video_processor: Video processor instance
             max_workers: Maximum concurrent workers
+            output_folder_override: If set, use this folder for output paths (e.g. Task 2)
         """
         self.state = state
         self.video_processor = video_processor
         self.max_workers = max(1, min(8, max_workers))  # Clamp to 1-8
+        self._output_folder_override = output_folder_override
 
         self._file_queue = queue.Queue()
         self._workers: List[threading.Thread] = []
@@ -79,9 +82,10 @@ class ParallelProcessor:
             except queue.Empty:
                 break
 
-        # Add files to queue
-        for file in files:
-            self._file_queue.put(file)
+        # Add files to queue with their batch index so sequential rename works
+        # correctly for any batch size (1 file, 30 episodes, 50+)
+        for index, file in enumerate(files):
+            self._file_queue.put((index, file))
 
         # Start worker threads
         self._workers = []
@@ -160,16 +164,16 @@ class ParallelProcessor:
         """
         while not self._stop_event.is_set():
             try:
-                # Get next file with timeout to allow checking stop event
+                # Get next (index, file) pair with timeout to allow checking stop event
                 try:
-                    file = self._file_queue.get(timeout=0.5)
+                    file_index, file = self._file_queue.get(timeout=0.5)
                 except queue.Empty:
                     # No more files, exit
                     break
 
                 if self._stop_event.is_set():
-                    # Put file back and exit
-                    self._file_queue.put(file)
+                    # Put item back and exit
+                    self._file_queue.put((file_index, file))
                     break
 
                 # Increment active count
@@ -191,13 +195,24 @@ class ParallelProcessor:
                         if self._on_progress:
                             self._on_progress(file.id, percent)
 
-                    # Process video
-                    self.video_processor.process_video(
+                    # Process video with per-file cut times
+                    def log_callback(message: str):
+                        self.state.add_log(message)
+                    
+                    output_path = self.video_processor._get_output_path(
                         file.path,
-                        self.video_processor._get_output_path(file.path),
-                        on_progress=progress_callback
+                        output_folder_override=self._output_folder_override,
+                        file_index=file_index,
                     )
-                    success = True
+                    success, error_msg = self.video_processor.process_video(
+                        file.path,
+                        output_path,
+                        on_progress=progress_callback,
+                        on_log=log_callback,
+                        processing_file=file
+                    )
+                    if not success:
+                        error_msg = error_msg or "Processing failed"
 
                 except Exception as e:
                     error_msg = str(e)
