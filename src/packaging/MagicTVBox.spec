@@ -9,16 +9,45 @@ To build: pyinstaller src/packaging/MagicTVBox.spec
 """
 
 import os
+import sys
 
 block_cipher = None
 
+# Get the directory where this spec file is located
+spec_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(spec_dir))
+
+# Determine FFmpeg path
+ffmpeg_path = None
+ffmpeg_locations = [
+    'C:/ffmpeg/bin/ffmpeg.exe',  # Standard Windows location
+    os.path.join(project_root, 'ffmpeg.exe'),  # Project root
+    os.path.join(spec_dir, 'ffmpeg.exe'),  # Packaging directory
+]
+
+for location in ffmpeg_locations:
+    if os.path.exists(location):
+        ffmpeg_path = location
+        break
+
+# Prepare binaries list
+binaries = []
+if ffmpeg_path:
+    binaries.append((ffmpeg_path, '.'))
+    print(f"[INFO] FFmpeg found at: {ffmpeg_path}")
+else:
+    print("[WARNING] FFmpeg not found. Executable will require FFmpeg in PATH or same directory.")
+
+# Prepare icon path
+icon_path = os.path.join(spec_dir, 'icon.ico')
+if not os.path.exists(icon_path):
+    icon_path = None
+    print("[INFO] No custom icon found, using default Windows icon")
+
 a = Analysis(
-    ['../../main.py'],  # Entry point (relative to this spec file: src/packaging/../../main.py)
+    ['../../main.py'],  # Entry point (relative to this spec file)
     pathex=[],
-    binaries=[
-        # Bundle FFmpeg executable
-        ('C:/ffmpeg/bin/ffmpeg.exe', '.'),
-    ],
+    binaries=binaries,
     datas=[
         # UI assets (if any exist)
         ('../packaging/assets', 'assets'),
@@ -87,6 +116,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='icon.ico' if os.path.exists('src/packaging/icon.ico') else None,
-    version='version_info.txt',
+    icon=icon_path,
+    version=os.path.join(spec_dir, 'version_info.txt'),
 )
