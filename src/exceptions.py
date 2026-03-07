@@ -27,7 +27,10 @@ class InvalidVideoFormatError(VideoReadError):
 
 class DetectionFailedError(DetectionError):
     """Detection process failed"""
-    pass
+
+    def __init__(self, message: str, video_path: str = ""):
+        self.video_path = video_path
+        super().__init__(message)
 
 
 class DetectionTimeoutError(DetectionFailedError):

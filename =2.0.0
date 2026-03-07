@@ -1,0 +1,28 @@
+Defaulting to user installation because normal site-packages is not writeable
+Collecting psutil
+  Downloading psutil-7.2.2-cp37-abi3-win_amd64.whl.metadata (22 kB)
+Collecting scipy
+  Downloading scipy-1.17.1-cp313-cp313-win_amd64.whl.metadata (60 kB)
+Collecting pydantic
+  Downloading pydantic-2.12.5-py3-none-any.whl.metadata (90 kB)
+Requirement already satisfied: numpy<2.7,>=1.26.4 in C:\Users\Administrator\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages (from scipy) (2.4.2)
+Collecting annotated-types>=0.6.0 (from pydantic)
+  Downloading annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+Collecting pydantic-core==2.41.5 (from pydantic)
+  Downloading pydantic_core-2.41.5-cp313-cp313-win_amd64.whl.metadata (7.4 kB)
+Collecting typing-extensions>=4.14.1 (from pydantic)
+  Downloading typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting typing-inspection>=0.4.2 (from pydantic)
+  Downloading typing_inspection-0.4.2-py3-none-any.whl.metadata (2.6 kB)
+Downloading psutil-7.2.2-cp37-abi3-win_amd64.whl (137 kB)
+Downloading scipy-1.17.1-cp313-cp313-win_amd64.whl (36.5 MB)
+   ---------------------------------------- 36.5/36.5 MB 3.6 MB/s  0:00:10
+Downloading pydantic-2.12.5-py3-none-any.whl (463 kB)
+Downloading pydantic_core-2.41.5-cp313-cp313-win_amd64.whl (2.0 MB)
+   ---------------------------------------- 2.0/2.0 MB 3.6 MB/s  0:00:00
+Downloading annotated_types-0.7.0-py3-none-any.whl (13 kB)
+Downloading typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+Downloading typing_inspection-0.4.2-py3-none-any.whl (14 kB)
+Installing collected packages: typing-extensions, scipy, psutil, annotated-types, typing-inspection, pydantic-core, pydantic
+
+Successfully installed annotated-types-0.7.0 psutil-7.2.2 pydantic-2.12.5 pydantic-core-2.41.5 scipy-1.17.1 typing-extensions-4.15.0 typing-inspection-0.4.2

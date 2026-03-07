@@ -105,10 +105,16 @@ class MagicTVBoxApp:
         
         # Initialize state
         self.state = AppState()
-        
+
+        # Load persisted settings
+        from src.settings_manager import SettingsManager
+        self.settings_manager = SettingsManager()
+        self.settings_manager.apply_to_state(self.state)
+        self.state.settings_manager = self.settings_manager
+
         # Initialize video processor
         self.video_processor = VideoProcessor(self.state)
-        
+
         # Create UI
         self._create_ui()
         
@@ -123,7 +129,7 @@ class MagicTVBoxApp:
         self.sidebar.pack(side="left", fill="y", padx=0, pady=0)
         
         # Content area
-        self.content_frame = ctk.CTkFrame(self.main_container, fg_color="#f0f9ff")
+        self.content_frame = ctk.CTkFrame(self.main_container, fg_color="#0f172a")
         self.content_frame.pack(side="right", fill="both", expand=True, padx=0, pady=0)
         
         # Create views
@@ -132,7 +138,7 @@ class MagicTVBoxApp:
         
         # Batch view: tabbed Task 1, Task 2, + Add task button for more
         self.batch_container = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-        self.batch_tabview = ctk.CTkTabview(self.batch_container, fg_color="#f0f9ff")
+        self.batch_tabview = ctk.CTkTabview(self.batch_container, fg_color="#0f172a")
         self.batch_tabview.pack(fill="both", expand=True)
         self.batch_tabview.add("Task 1")
         self.batch_tabview.add("Task 2")
@@ -181,9 +187,9 @@ class MagicTVBoxApp:
     def _create_sidebar(self) -> ctk.CTkFrame:
         """Create the sidebar navigation"""
         sidebar = ctk.CTkFrame(
-            self.main_container, 
-            width=250, 
-            fg_color="#f0f9ff",
+            self.main_container,
+            width=250,
+            fg_color="#1e293b",
             corner_radius=0
         )
         
@@ -192,17 +198,18 @@ class MagicTVBoxApp:
         header.pack(fill="x", padx=20, pady=20)
         
         title = ctk.CTkLabel(
-            header, 
-            text="MagicTVBox", 
-            font=ctk.CTkFont(size=24, weight="bold")
+            header,
+            text="MagicTVBox",
+            font=ctk.CTkFont(size=24, weight="bold"),
+            text_color="#ffffff"
         )
         title.pack(anchor="w")
-        
+
         subtitle = ctk.CTkLabel(
-            header, 
-            text="FFmpeg Automation", 
+            header,
+            text="FFmpeg Automation",
             font=ctk.CTkFont(size=12),
-            text_color="#bae6fd"
+            text_color="#94a3b8"
         )
         subtitle.pack(anchor="w", pady=(5, 0))
         
@@ -224,10 +231,11 @@ class MagicTVBoxApp:
                 text=label,
                 command=lambda v=view_id: self._switch_view(v),
                 fg_color="transparent",
-                hover_color="#0369a1",
+                hover_color="#334155",
                 anchor="w",
                 height=45,
-                font=ctk.CTkFont(size=14)
+                font=ctk.CTkFont(size=14),
+                text_color="#e2e8f0"
             )
             btn.pack(fill="x", padx=5, pady=2)
             self.nav_buttons[view_id] = btn

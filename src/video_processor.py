@@ -72,7 +72,10 @@ class VideoProcessor:
         """Build FFmpeg parameters from processing profile"""
         from src.state import PROCESSING_PROFILES
 
-        profile = PROCESSING_PROFILES[self.state.processing_profile]
+        profile_key = self.state.processing_profile
+        if profile_key not in PROCESSING_PROFILES:
+            profile_key = "universal"
+        profile = PROCESSING_PROFILES[profile_key]
 
         params = {
             'vcodec': profile.video_codec,
@@ -98,7 +101,10 @@ class VideoProcessor:
         """Build FFmpeg command-line parameters from processing profile"""
         from src.state import PROCESSING_PROFILES
 
-        profile = PROCESSING_PROFILES[self.state.processing_profile]
+        profile_key = self.state.processing_profile
+        if profile_key not in PROCESSING_PROFILES:
+            profile_key = "universal"
+        profile = PROCESSING_PROFILES[profile_key]
 
         cmd = [
             '-c:v', profile.video_codec,
@@ -132,18 +138,20 @@ class VideoProcessor:
         output_path: str,
         on_progress: Optional[Callable[[float], None]] = None,
         on_log: Optional[Callable[[str], None]] = None,
-        processing_file: Optional[ProcessingFile] = None
+        processing_file: Optional[ProcessingFile] = None,
+        intro_outro_skip: Optional[Dict[str, float]] = None,
     ) -> Tuple[bool, Optional[str]]:
         """
         Process a single video file
-        
+
         Args:
             input_path: Input video file path
             output_path: Output video file path
             on_progress: Optional progress callback (0.0-1.0)
             on_log: Optional log callback
             processing_file: Optional ProcessingFile with per-file cut times
-        
+            intro_outro_skip: Optional dict with 'ss' and/or 't' keys for skipping intro/outro
+
         Returns:
             (success, error_message) - error_message is set when success is False
         """
@@ -202,7 +210,40 @@ class VideoProcessor:
             else:
                 duration = None
                 start_time = 0.0
-            
+
+            # Auto-detect intro/outro if enabled and no explicit skip params
+            if not intro_outro_skip and self.state.intro_outro_enabled:
+                try:
+                    from src.intro_outro_detector import IntroOutroDetector
+                    detector = IntroOutroDetector()
+                    if on_log:
+                        on_log("Scanning for intro/outro...\n")
+                    result = detector.analyze_video(input_path)
+                    if result.has_detections:
+                        intro_outro_skip = {}
+                        if result.intro and result.intro.confidence >= 0.65:
+                            intro_outro_skip["ss"] = result.intro.end_time
+                        if result.outro and result.outro.confidence >= 0.60:
+                            end = result.outro.start_time
+                            ss = intro_outro_skip.get("ss", 0.0)
+                            intro_outro_skip["t"] = end - ss
+                        if on_log and intro_outro_skip:
+                            on_log(f"Detected segments: {intro_outro_skip}\n")
+                except Exception as e:
+                    if on_log:
+                        on_log(f"Intro/outro detection skipped: {e}\n")
+
+            # Apply intro/outro skip params (overrides trim if set)
+            if intro_outro_skip:
+                if "ss" in intro_outro_skip:
+                    start_time = max(start_time, intro_outro_skip["ss"])
+                    if on_log:
+                        on_log(f"Skipping intro: starting at {start_time:.1f}s\n")
+                if "t" in intro_outro_skip:
+                    duration = intro_outro_skip["t"]
+                    if on_log:
+                        on_log(f"Skipping outro: duration {duration:.1f}s\n")
+
             # Build FFmpeg command
             if HAS_FFMPEG_PYTHON:
                 return self._process_with_ffmpeg_python(
@@ -287,9 +328,26 @@ class VideoProcessor:
     ) -> Tuple[bool, Optional[str]]:
         """Process using subprocess with progress tracking"""
         import re
-        
+        from src.cpu_limiter import CPULimiter
+
+        # CPU limiting setup
+        limiter = None
+        if self.state.cpu_limit_config.enabled:
+            try:
+                limiter = CPULimiter(self.state.cpu_limit_config)
+            except ValueError:
+                limiter = None  # Invalid config — proceed without limiting
+
         cmd = ['ffmpeg', '-i', input_path]
-        
+
+        # Apply CPU thread limit before other options
+        if limiter:
+            threads = limiter.calculate_threads()
+            cmd.extend(['-threads', str(threads)])
+            cmd.extend(['-filter_threads', str(threads)])
+            if on_log:
+                on_log(f"CPU limit: {self.state.cpu_limit_config.limit_percent}% ({threads} threads)\n")
+
         # Apply trim: -ss (start) and -t (duration)
         if start_time > 0:
             cmd.extend(['-ss', str(start_time)])
@@ -343,7 +401,14 @@ class VideoProcessor:
                 "FFmpeg not found. Please install FFmpeg and add it to your system PATH.\n\n"
                 "Download from: https://ffmpeg.org/download.html"
             )
-        
+
+        # Apply CPU priority and start monitoring
+        if limiter:
+            limiter.apply_priority(process)
+            def _cpu_callback(metrics):
+                self.state.current_cpu_metrics = metrics
+            limiter.start_monitoring(process, _cpu_callback)
+
         # Monitor progress and collect output
         def monitor_progress():
             nonlocal output_lines
@@ -364,7 +429,12 @@ class VideoProcessor:
         monitor_thread.start()
         
         process.wait()
-        
+
+        # Stop CPU monitoring
+        if limiter:
+            limiter.stop_monitoring()
+            self.state.current_cpu_metrics = None
+
         if process.returncode == 0:
             if on_progress:
                 on_progress(100.0)

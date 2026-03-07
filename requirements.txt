@@ -10,4 +10,13 @@ pywin32>=305
 opencv-python-headless>=4.8.0
 numpy>=1.24.0
 
+# CPU limiting and monitoring (003-cpu-limit-options)
+psutil>=5.9.0
+
+# Intro/outro detection - perceptual hashing (003-cpu-limit-options)
+scipy>=1.9.0
+
+# Settings validation and persistence (003-cpu-limit-options)
+pydantic>=2.0.0
+
 

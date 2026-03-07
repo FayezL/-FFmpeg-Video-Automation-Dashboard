@@ -31,7 +31,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
     """Batch processor view with expanded options. task_index 0 = Task 1, 1 = Task 2."""
     
     def __init__(self, parent, state: AppState, processor: VideoProcessor, task_index: int = 0):
-        super().__init__(parent, fg_color="#f0f9ff")
+        super().__init__(parent, fg_color="#0f172a")
         self.state = state
         self.processor = processor
         self.task_index = task_index
@@ -113,15 +113,16 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         title = ctk.CTkLabel(
             header,
             text=f"Batch Processor — {task_name}",
-            font=ctk.CTkFont(size=28, weight="bold")
+            font=ctk.CTkFont(size=28, weight="bold"),
+            text_color="#ffffff"
         )
         title.pack(anchor="w")
-        
+
         subtitle = ctk.CTkLabel(
             header,
             text=f"Process multiple videos ({task_name}). Separate file list and output from the other task.",
             font=ctk.CTkFont(size=13),
-            text_color="#bae6fd"
+            text_color="#94a3b8"
         )
         subtitle.pack(anchor="w", pady=(4, 0))
         
@@ -139,7 +140,10 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
 
         # === PROCESSING OPTIONS (Delogo) ===
         self._create_delogo_section()
-        
+
+        # === INTRO/OUTRO DETECTION ===
+        self._create_intro_outro_section()
+
         # === OUTPUT SECTION ===
         self._create_output_section()
         
@@ -152,7 +156,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
     
     def _create_input_section(self):
         """Input source section - files or folder"""
-        input_frame = ctk.CTkFrame(self, fg_color="#f0f9ff", corner_radius=12)
+        input_frame = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=12)
         input_frame.pack(fill="x", pady=(0, 12))
         
         # Section header
@@ -162,7 +166,8 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         ctk.CTkLabel(
             section_header,
             text="◨  Input Source",
-            font=ctk.CTkFont(size=16, weight="bold")
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color="#ffffff"
         ).pack(anchor="w")
         
         content = ctk.CTkFrame(input_frame, fg_color="transparent")
@@ -199,7 +204,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             pattern_row,
             text="File pattern:",
             font=ctk.CTkFont(size=12),
-            text_color="#bae6fd",
+            text_color="#e2e8f0",
             width=80
         ).pack(side="left", padx=(0, 8))
         
@@ -207,14 +212,17 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             pattern_row,
             placeholder_text="e.g. *.mkv or S01E*.mp4 (leave empty for all)",
             width=320,
-            height=32
+            height=32,
+            border_color="#475569",
+            fg_color="#334155",
+            text_color="#e2e8f0"
         )
         self.pattern_entry.pack(side="left")
         self.pattern_entry.insert(0, "*")
     
     def _create_trim_section(self):
         """Trim/Cut options section"""
-        trim_frame = ctk.CTkFrame(self, fg_color="#f0f9ff", corner_radius=12)
+        trim_frame = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=12)
         trim_frame.pack(fill="x", pady=(0, 12))
         
         section_header = ctk.CTkFrame(trim_frame, fg_color="transparent")
@@ -223,7 +231,8 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         ctk.CTkLabel(
             section_header,
             text="✀  Trim / Cut Options",
-            font=ctk.CTkFont(size=16, weight="bold")
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color="#ffffff"
         ).pack(anchor="w")
         
         content = ctk.CTkFrame(trim_frame, fg_color="transparent")
@@ -273,13 +282,16 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             self.cut_minutes_frame,
             text="Hours:",
             font=ctk.CTkFont(size=12),
-            text_color="#bae6fd"
+            text_color="#e2e8f0"
         ).pack(side="left", padx=(0, 8))
 
         self.cut_hours_entry = ctk.CTkEntry(
             self.cut_minutes_frame,
             width=60,
-            height=28
+            height=28,
+            border_color="#475569",
+            fg_color="#334155",
+            text_color="#e2e8f0"
         )
         self.cut_hours_entry.pack(side="left", padx=(0, 8))
         self.cut_hours_entry.insert(0, "0")
@@ -289,13 +301,16 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             self.cut_minutes_frame,
             text="Minutes:",
             font=ctk.CTkFont(size=12),
-            text_color="#bae6fd"
+            text_color="#e2e8f0"
         ).pack(side="left", padx=(0, 8))
 
         self.cut_minutes_entry = ctk.CTkEntry(
             self.cut_minutes_frame,
             width=60,
-            height=28
+            height=28,
+            border_color="#475569",
+            fg_color="#334155",
+            text_color="#e2e8f0"
         )
         self.cut_minutes_entry.pack(side="left", padx=(0, 8))
         self.cut_minutes_entry.insert(0, "5")
@@ -305,13 +320,16 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             self.cut_minutes_frame,
             text="Seconds:",
             font=ctk.CTkFont(size=12),
-            text_color="#bae6fd"
+            text_color="#e2e8f0"
         ).pack(side="left", padx=(0, 8))
 
         self.cut_seconds_entry = ctk.CTkEntry(
             self.cut_minutes_frame,
             width=60,
-            height=28
+            height=28,
+            border_color="#475569",
+            fg_color="#334155",
+            text_color="#e2e8f0"
         )
         self.cut_seconds_entry.pack(side="left")
         self.cut_seconds_entry.insert(0, "0")
@@ -321,40 +339,82 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         self.cut_range_frame.pack(side="left", padx=(100, 0))
 
         # Start time
-        ctk.CTkLabel(self.cut_range_frame, text="Start:", font=ctk.CTkFont(size=12, weight="bold"), text_color="#bae6fd").pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(self.cut_range_frame, text="Start:", font=ctk.CTkFont(size=12, weight="bold"), text_color="#e2e8f0").pack(side="left", padx=(0, 6))
 
-        self.cut_start_hours_entry = ctk.CTkEntry(self.cut_range_frame, width=45, height=28)
+        self.cut_start_hours_entry = ctk.CTkEntry(
+            self.cut_range_frame,
+            width=45,
+            height=28,
+            border_color="#475569",
+            fg_color="#334155",
+            text_color="#e2e8f0"
+        )
         self.cut_start_hours_entry.pack(side="left", padx=(0, 2))
         self.cut_start_hours_entry.insert(0, "0")
-        ctk.CTkLabel(self.cut_range_frame, text="h", font=ctk.CTkFont(size=11), text_color="#64748B").pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(self.cut_range_frame, text="h", font=ctk.CTkFont(size=11), text_color="#94a3b8").pack(side="left", padx=(0, 6))
 
-        self.cut_start_entry = ctk.CTkEntry(self.cut_range_frame, width=45, height=28)
+        self.cut_start_entry = ctk.CTkEntry(
+            self.cut_range_frame,
+            width=45,
+            height=28,
+            border_color="#475569",
+            fg_color="#334155",
+            text_color="#e2e8f0"
+        )
         self.cut_start_entry.pack(side="left", padx=(0, 2))
         self.cut_start_entry.insert(0, "0")
-        ctk.CTkLabel(self.cut_range_frame, text="m", font=ctk.CTkFont(size=11), text_color="#64748B").pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(self.cut_range_frame, text="m", font=ctk.CTkFont(size=11), text_color="#94a3b8").pack(side="left", padx=(0, 6))
 
-        self.cut_start_sec_entry = ctk.CTkEntry(self.cut_range_frame, width=45, height=28)
+        self.cut_start_sec_entry = ctk.CTkEntry(
+            self.cut_range_frame,
+            width=45,
+            height=28,
+            border_color="#475569",
+            fg_color="#334155",
+            text_color="#e2e8f0"
+        )
         self.cut_start_sec_entry.pack(side="left", padx=(0, 2))
         self.cut_start_sec_entry.insert(0, "0")
-        ctk.CTkLabel(self.cut_range_frame, text="s", font=ctk.CTkFont(size=11), text_color="#64748B").pack(side="left", padx=(0, 16))
+        ctk.CTkLabel(self.cut_range_frame, text="s", font=ctk.CTkFont(size=11), text_color="#94a3b8").pack(side="left", padx=(0, 16))
 
         # End time
-        ctk.CTkLabel(self.cut_range_frame, text="End:", font=ctk.CTkFont(size=12, weight="bold"), text_color="#bae6fd").pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(self.cut_range_frame, text="End:", font=ctk.CTkFont(size=12, weight="bold"), text_color="#e2e8f0").pack(side="left", padx=(0, 6))
 
-        self.cut_end_hours_entry = ctk.CTkEntry(self.cut_range_frame, width=45, height=28)
+        self.cut_end_hours_entry = ctk.CTkEntry(
+            self.cut_range_frame,
+            width=45,
+            height=28,
+            border_color="#475569",
+            fg_color="#334155",
+            text_color="#e2e8f0"
+        )
         self.cut_end_hours_entry.pack(side="left", padx=(0, 2))
         self.cut_end_hours_entry.insert(0, "")
-        ctk.CTkLabel(self.cut_range_frame, text="h", font=ctk.CTkFont(size=11), text_color="#64748B").pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(self.cut_range_frame, text="h", font=ctk.CTkFont(size=11), text_color="#94a3b8").pack(side="left", padx=(0, 6))
 
-        self.cut_end_entry = ctk.CTkEntry(self.cut_range_frame, width=45, height=28)
+        self.cut_end_entry = ctk.CTkEntry(
+            self.cut_range_frame,
+            width=45,
+            height=28,
+            border_color="#475569",
+            fg_color="#334155",
+            text_color="#e2e8f0"
+        )
         self.cut_end_entry.pack(side="left", padx=(0, 2))
         self.cut_end_entry.insert(0, "")
-        ctk.CTkLabel(self.cut_range_frame, text="m", font=ctk.CTkFont(size=11), text_color="#64748B").pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(self.cut_range_frame, text="m", font=ctk.CTkFont(size=11), text_color="#94a3b8").pack(side="left", padx=(0, 6))
 
-        self.cut_end_sec_entry = ctk.CTkEntry(self.cut_range_frame, width=45, height=28)
+        self.cut_end_sec_entry = ctk.CTkEntry(
+            self.cut_range_frame,
+            width=45,
+            height=28,
+            border_color="#475569",
+            fg_color="#334155",
+            text_color="#e2e8f0"
+        )
         self.cut_end_sec_entry.pack(side="left", padx=(0, 2))
         self.cut_end_sec_entry.insert(0, "")
-        ctk.CTkLabel(self.cut_range_frame, text="s", font=ctk.CTkFont(size=11), text_color="#64748B").pack(side="left")
+        ctk.CTkLabel(self.cut_range_frame, text="s", font=ctk.CTkFont(size=11), text_color="#94a3b8").pack(side="left")
         
         self._on_cut_mode_change()
 
@@ -362,7 +422,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         """Processing profile/quality section"""
         from src.state import PROCESSING_PROFILES
 
-        profile_frame = ctk.CTkFrame(self, fg_color="#f0f9ff", corner_radius=12)
+        profile_frame = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=12)
         profile_frame.pack(fill="x", pady=(0, 12))
 
         section_header = ctk.CTkFrame(profile_frame, fg_color="transparent")
@@ -371,7 +431,8 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         ctk.CTkLabel(
             section_header,
             text="⚡ Processing Profile",
-            font=ctk.CTkFont(size=16, weight="bold")
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color="#ffffff"
         ).pack(anchor="w")
 
         content = ctk.CTkFrame(profile_frame, fg_color="transparent")
@@ -389,7 +450,11 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             anchor="w"
         ).pack(side="left", padx=(0, 12))
 
-        self.profile_var = ctk.StringVar(value=self.state.processing_profile)
+        profile_key = self.state.processing_profile
+        if profile_key not in PROCESSING_PROFILES:
+            profile_key = "universal"
+            self.state.processing_profile = profile_key
+        self.profile_var = ctk.StringVar(value=profile_key)
 
         profile_menu = ctk.CTkOptionMenu(
             profile_row,
@@ -404,9 +469,9 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         # Profile description
         self.profile_desc_label = ctk.CTkLabel(
             content,
-            text=PROCESSING_PROFILES[self.state.processing_profile].description,
+            text=PROCESSING_PROFILES[profile_key].description,
             font=ctk.CTkFont(size=12),
-            text_color="#bae6fd",
+            text_color="#e2e8f0",
             wraplength=600,
             anchor="w",
             justify="left"
@@ -415,7 +480,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
 
     def _create_detection_section(self):
         """AI Logo Detection section (Phase 4)"""
-        detection_frame = ctk.CTkFrame(self, fg_color="#f0f9ff", corner_radius=12)
+        detection_frame = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=12)
         detection_frame.pack(fill="x", pady=(0, 12))
 
         # Section header
@@ -428,14 +493,15 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         ctk.CTkLabel(
             header_row,
             text="⌕  AI Logo Detection",
-            font=ctk.CTkFont(size=16, weight="bold")
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color="#ffffff"
         ).pack(side="left")
 
         ctk.CTkLabel(
             header_row,
             text="Fewer frames, results by confidence. Choose method below.",
             font=ctk.CTkFont(size=12),
-            text_color="#64748B"
+            text_color="#334155"
         ).pack(side="left", padx=(12, 0))
 
         # Content
@@ -449,7 +515,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             method_row,
             text="Method:",
             font=ctk.CTkFont(size=12),
-            text_color="#bae6fd"
+            text_color="#e2e8f0"
         ).pack(side="left", padx=(0, 8))
         method_values = ["OpenCV (local)"]
         if vision_detector_available():
@@ -487,7 +553,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             sensitivity_frame,
             text="Sensitivity:",
             font=ctk.CTkFont(size=12),
-            text_color="#bae6fd"
+            text_color="#e2e8f0"
         ).pack(side="left", padx=(0, 8))
 
         self.sensitivity_slider = ctk.CTkSlider(
@@ -505,7 +571,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             sensitivity_frame,
             text="75%",
             font=ctk.CTkFont(size=11),
-            text_color="#f0f9ff",
+            text_color="#e2e8f0",
             width=40
         )
         self.sensitivity_label.pack(side="left")
@@ -520,13 +586,13 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             content,
             text="Click 'Detect Logo' to analyze the first video in the queue",
             font=ctk.CTkFont(size=12),
-            text_color="#64748B",
+            text_color="#94a3b8",
             anchor="w"
         )
         self.detection_status_label.pack(anchor="w", pady=(0, 12))
 
         # Results area (initially hidden)
-        self.detection_results_frame = ctk.CTkFrame(content, fg_color="#f0f9ff", corner_radius=10)
+        self.detection_results_frame = ctk.CTkFrame(content, fg_color="#1e293b", corner_radius=10)
         self.detection_results_frame.pack(fill="x", pady=(0, 0))
         self.detection_results_frame.pack_forget()  # Hide initially
 
@@ -535,7 +601,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
 
     def _create_delogo_section(self):
         """Delogo filter section"""
-        delogo_frame = ctk.CTkFrame(self, fg_color="#f0f9ff", corner_radius=12)
+        delogo_frame = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=12)
         delogo_frame.pack(fill="x", pady=(0, 12))
         
         section_header = ctk.CTkFrame(delogo_frame, fg_color="transparent")
@@ -562,7 +628,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         for i, (label, value) in enumerate(zip(labels, values)):
             f = ctk.CTkFrame(self.delogo_params_frame, fg_color="transparent")
             f.pack(side="left", padx=(0, 16))
-            ctk.CTkLabel(f, text=label, font=ctk.CTkFont(size=11), text_color="#bae6fd").pack(anchor="w")
+            ctk.CTkLabel(f, text=label, font=ctk.CTkFont(size=11), text_color="#e2e8f0").pack(anchor="w")
             e = ctk.CTkEntry(f, width=70, height=28)
             e.insert(0, str(value))
             e.pack(anchor="w", pady=(2, 0))
@@ -571,10 +637,48 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         
         if not self.state.apply_delogo:
             self.delogo_params_frame.pack_forget()
-    
+
+    def _create_intro_outro_section(self):
+        """Intro/outro detection toggle for batch processing."""
+        frame = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=12)
+        frame.pack(fill="x", pady=(0, 12))
+
+        header = ctk.CTkFrame(frame, fg_color="transparent")
+        header.pack(fill="x", padx=16, pady=(16, 12))
+
+        self.intro_outro_checkbox = ctk.CTkCheckBox(
+            header,
+            text="Detect Intro / Outro (skip repeating segments)",
+            command=self._on_intro_outro_toggle,
+            font=ctk.CTkFont(size=14),
+        )
+        self.intro_outro_checkbox.pack(anchor="w")
+        if self.state.intro_outro_enabled:
+            self.intro_outro_checkbox.select()
+
+        self.intro_outro_note = ctk.CTkLabel(
+            frame,
+            text="Each file will be scanned before processing. Detected intros/outros are automatically skipped.",
+            font=ctk.CTkFont(size=11),
+            text_color="#94a3b8",
+            wraplength=500,
+            anchor="w",
+            justify="left",
+        )
+        if self.state.intro_outro_enabled:
+            self.intro_outro_note.pack(anchor="w", padx=16, pady=(0, 12))
+
+    def _on_intro_outro_toggle(self):
+        enabled = self.intro_outro_checkbox.get() == 1
+        self.state.intro_outro_enabled = enabled
+        if enabled:
+            self.intro_outro_note.pack(anchor="w", padx=16, pady=(0, 12))
+        else:
+            self.intro_outro_note.pack_forget()
+
     def _create_output_section(self):
         """Output options section"""
-        output_frame = ctk.CTkFrame(self, fg_color="#f0f9ff", corner_radius=12)
+        output_frame = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=12)
         output_frame.pack(fill="x", pady=(0, 12))
         
         section_header = ctk.CTkFrame(output_frame, fg_color="transparent")
@@ -583,7 +687,8 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         ctk.CTkLabel(
             section_header,
             text="⇪  Output Options",
-            font=ctk.CTkFont(size=16, weight="bold")
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color="#ffffff"
         ).pack(anchor="w")
         
         content = ctk.CTkFrame(output_frame, fg_color="transparent")
@@ -597,7 +702,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             folder_row,
             text="Output folder:",
             font=ctk.CTkFont(size=12),
-            text_color="#bae6fd",
+            text_color="#e2e8f0",
             width=100
         ).pack(side="left", padx=(0, 8))
         
@@ -605,7 +710,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             folder_row,
             text=self._output_folder(),
             font=ctk.CTkFont(size=12),
-            text_color="#f0f9ff"
+            text_color="#94a3b8"
         )
         self.output_label.pack(side="left", fill="x", expand=True)
         
@@ -621,7 +726,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         opts_row = ctk.CTkFrame(content, fg_color="transparent")
         opts_row.pack(fill="x", pady=(0, 8))
         
-        ctk.CTkLabel(opts_row, text="Format:", font=ctk.CTkFont(size=12), text_color="#bae6fd", width=100).pack(side="left", padx=(0, 8))
+        ctk.CTkLabel(opts_row, text="Format:", font=ctk.CTkFont(size=12), text_color="#e2e8f0", width=100).pack(side="left", padx=(0, 8))
         self.format_var = ctk.StringVar(value=self.state.output_format)
         format_menu = ctk.CTkOptionMenu(
             opts_row,
@@ -633,12 +738,12 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         )
         format_menu.pack(side="left", padx=(0, 24))
         
-        ctk.CTkLabel(opts_row, text="Prefix:", font=ctk.CTkFont(size=12), text_color="#bae6fd", width=60).pack(side="left", padx=(0, 8))
+        ctk.CTkLabel(opts_row, text="Prefix:", font=ctk.CTkFont(size=12), text_color="#e2e8f0", width=60).pack(side="left", padx=(0, 8))
         self.prefix_entry = ctk.CTkEntry(opts_row, width=100, height=28)
         self.prefix_entry.insert(0, self.state.output_prefix)
         self.prefix_entry.pack(side="left", padx=(0, 16))
         
-        ctk.CTkLabel(opts_row, text="Suffix:", font=ctk.CTkFont(size=12), text_color="#bae6fd", width=60).pack(side="left", padx=(0, 8))
+        ctk.CTkLabel(opts_row, text="Suffix:", font=ctk.CTkFont(size=12), text_color="#e2e8f0", width=60).pack(side="left", padx=(0, 8))
         self.suffix_entry = ctk.CTkEntry(opts_row, width=100, height=28)
         self.suffix_entry.insert(0, self.state.output_suffix)
         self.suffix_entry.pack(side="left")
@@ -680,7 +785,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             50 eps  → hamo01.mp4 … hamo50.mp4
         """
         # Divider
-        divider = ctk.CTkFrame(parent_frame, fg_color="#0369a1", height=1)
+        divider = ctk.CTkFrame(parent_frame, fg_color="#475569", height=1)
         divider.pack(fill="x", padx=16, pady=(4, 0))
 
         rename_content = ctk.CTkFrame(parent_frame, fg_color="transparent")
@@ -709,7 +814,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             self.rename_opts_frame,
             text="Base name:",
             font=ctk.CTkFont(size=12),
-            text_color="#bae6fd",
+            text_color="#e2e8f0",
             width=80
         ).pack(side="left", padx=(0, 6))
 
@@ -727,7 +832,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             self.rename_opts_frame,
             text="Start №:",
             font=ctk.CTkFont(size=12),
-            text_color="#bae6fd"
+            text_color="#e2e8f0"
         ).pack(side="left", padx=(0, 6))
 
         self.rename_start_entry = ctk.CTkEntry(
@@ -743,7 +848,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             self.rename_opts_frame,
             text="Digits:",
             font=ctk.CTkFont(size=12),
-            text_color="#bae6fd"
+            text_color="#e2e8f0"
         ).pack(side="left", padx=(0, 6))
 
         self.rename_pad_entry = ctk.CTkEntry(
@@ -759,7 +864,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             self.rename_opts_frame,
             text=self._build_rename_preview(),
             font=ctk.CTkFont(size=11),
-            text_color="#64748B"
+            text_color="#94a3b8"
         )
         self.rename_preview_label.pack(side="left")
 
@@ -815,7 +920,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
 
     def _create_file_section(self):
         """File list section"""
-        file_frame = ctk.CTkFrame(self, fg_color="#f0f9ff", corner_radius=12)
+        file_frame = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=12)
         file_frame.pack(fill="both", expand=True, pady=(0, 12))
         
         header = ctk.CTkFrame(file_frame, fg_color="transparent")
@@ -824,14 +929,15 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         ctk.CTkLabel(
             header,
             text="≣  Files to Process",
-            font=ctk.CTkFont(size=16, weight="bold")
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color="#ffffff"
         ).pack(side="left")
         
         self.file_count_label = ctk.CTkLabel(
             header,
             text="0 files",
             font=ctk.CTkFont(size=12),
-            text_color="#bae6fd"
+            text_color="#60a5fa"
         )
         self.file_count_label.pack(side="left", padx=(12, 0))
         
@@ -848,7 +954,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         
         self.file_list_frame = ctk.CTkScrollableFrame(
             file_frame,
-            fg_color="#f0f9ff",
+            fg_color="#1e293b",
             height=220,
             corner_radius=10
         )
@@ -881,7 +987,39 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             hover_color="#B91C1C"
         )
         self.stop_btn.pack_forget()
-    
+
+        # CPU meter (inline next to buttons, shown during processing)
+        self.cpu_meter_frame = ctk.CTkFrame(btn_frame, fg_color="transparent")
+        # Not packed yet — shown/hidden by _set_processing
+
+        ctk.CTkLabel(
+            self.cpu_meter_frame,
+            text="CPU:",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="#94a3b8",
+            width=35
+        ).pack(side="left")
+
+        self.batch_cpu_bar = ctk.CTkProgressBar(
+            self.cpu_meter_frame,
+            width=120, height=12,
+            fg_color="#334155",
+            progress_color="#0ea5e9"
+        )
+        self.batch_cpu_bar.set(0)
+        self.batch_cpu_bar.pack(side="left", padx=(4, 6))
+
+        self.batch_cpu_label = ctk.CTkLabel(
+            self.cpu_meter_frame,
+            text="--",
+            font=ctk.CTkFont(size=11),
+            text_color="#94a3b8",
+            width=70
+        )
+        self.batch_cpu_label.pack(side="left")
+
+        self._batch_cpu_polling = False
+
     def _select_files(self):
         """Select video files"""
         files = filedialog.askopenfilenames(
@@ -962,7 +1100,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
                 self.file_list_frame,
                 text="No files selected. Use 'Select Files' or 'Select Folder' to add videos.",
                 font=ctk.CTkFont(size=13),
-                text_color="#64748B"
+                text_color="#94a3b8"
             ).pack(pady=40)
             return
         
@@ -1003,49 +1141,165 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         
         # Per-file cut times row (only show when not processing/completed)
         if file.status == FileStatus.PENDING:
-            cut_row = ctk.CTkFrame(item, fg_color="transparent")
-            cut_row.pack(fill="x", padx=12, pady=(0, 8))
-            
+            cut_row = ctk.CTkFrame(item, fg_color="#334155", corner_radius=6)
+            cut_row.pack(fill="x", padx=12, pady=(4, 8))
+
+            inner_row = ctk.CTkFrame(cut_row, fg_color="transparent")
+            inner_row.pack(fill="x", padx=8, pady=6)
+
             use_custom = ctk.CTkCheckBox(
-                cut_row,
-                text="Custom cut:",
-                font=ctk.CTkFont(size=11),
-                width=100
+                inner_row,
+                text="Custom Times",
+                font=ctk.CTkFont(size=11, weight="bold"),
+                text_color="#e2e8f0",
+                width=110,
+                fg_color="#0ea5e9",
+                hover_color="#0284c7"
             )
-            use_custom.pack(side="left", padx=(0, 8))
+            use_custom.pack(side="left", padx=(0, 12))
             if file.use_custom_cut:
                 use_custom.select()
-            
-            start_label = ctk.CTkLabel(cut_row, text="Start:", font=ctk.CTkFont(size=10), width=40)
+
+            # Start time - 3 separate fields
+            start_label = ctk.CTkLabel(
+                inner_row,
+                text="Start:",
+                font=ctk.CTkFont(size=11, weight="bold"),
+                text_color="#e2e8f0",
+                width=45
+            )
             start_label.pack(side="left", padx=(0, 4))
-            start_entry = ctk.CTkEntry(cut_row, width=80, height=24, placeholder_text="0:00")
-            start_entry.pack(side="left", padx=(0, 8))
+
+            ctk.CTkLabel(inner_row, text="H:", font=ctk.CTkFont(size=10), text_color="#94a3b8", width=20).pack(side="left")
+            start_h_entry = ctk.CTkEntry(
+                inner_row,
+                width=40,
+                height=28,
+                placeholder_text="0",
+                border_color="#475569",
+                fg_color="#1e293b",
+                text_color="#e2e8f0"
+            )
+            start_h_entry.pack(side="left", padx=(0, 6))
+
+            ctk.CTkLabel(inner_row, text="M:", font=ctk.CTkFont(size=10), text_color="#94a3b8", width=20).pack(side="left")
+            start_m_entry = ctk.CTkEntry(
+                inner_row,
+                width=40,
+                height=28,
+                placeholder_text="0",
+                border_color="#475569",
+                fg_color="#1e293b",
+                text_color="#e2e8f0"
+            )
+            start_m_entry.pack(side="left", padx=(0, 6))
+
+            ctk.CTkLabel(inner_row, text="S:", font=ctk.CTkFont(size=10), text_color="#94a3b8", width=20).pack(side="left")
+            start_s_entry = ctk.CTkEntry(
+                inner_row,
+                width=40,
+                height=28,
+                placeholder_text="0",
+                border_color="#475569",
+                fg_color="#1e293b",
+                text_color="#e2e8f0"
+            )
+            start_s_entry.pack(side="left", padx=(0, 16))
+
+            # Pre-fill start time fields if available
             if file.custom_cut_start_seconds is not None:
-                start_entry.insert(0, self._seconds_to_time(file.custom_cut_start_seconds))
-            
-            end_label = ctk.CTkLabel(cut_row, text="End:", font=ctk.CTkFont(size=10), width=30)
+                h = int(file.custom_cut_start_seconds // 3600)
+                m = int((file.custom_cut_start_seconds % 3600) // 60)
+                s = int(file.custom_cut_start_seconds % 60)
+                if h > 0:
+                    start_h_entry.insert(0, str(h))
+                if m > 0 or h > 0:
+                    start_m_entry.insert(0, str(m))
+                if s > 0 or m > 0 or h > 0:
+                    start_s_entry.insert(0, str(s))
+
+            # End time - 3 separate fields
+            end_label = ctk.CTkLabel(
+                inner_row,
+                text="End:",
+                font=ctk.CTkFont(size=11, weight="bold"),
+                text_color="#e2e8f0",
+                width=35
+            )
             end_label.pack(side="left", padx=(0, 4))
-            end_entry = ctk.CTkEntry(cut_row, width=80, height=24, placeholder_text="(end)")
-            end_entry.pack(side="left")
+
+            ctk.CTkLabel(inner_row, text="H:", font=ctk.CTkFont(size=10), text_color="#94a3b8", width=20).pack(side="left")
+            end_h_entry = ctk.CTkEntry(
+                inner_row,
+                width=40,
+                height=28,
+                placeholder_text="0",
+                border_color="#475569",
+                fg_color="#1e293b",
+                text_color="#e2e8f0"
+            )
+            end_h_entry.pack(side="left", padx=(0, 6))
+
+            ctk.CTkLabel(inner_row, text="M:", font=ctk.CTkFont(size=10), text_color="#94a3b8", width=20).pack(side="left")
+            end_m_entry = ctk.CTkEntry(
+                inner_row,
+                width=40,
+                height=28,
+                placeholder_text="0",
+                border_color="#475569",
+                fg_color="#1e293b",
+                text_color="#e2e8f0"
+            )
+            end_m_entry.pack(side="left", padx=(0, 6))
+
+            ctk.CTkLabel(inner_row, text="S:", font=ctk.CTkFont(size=10), text_color="#94a3b8", width=20).pack(side="left")
+            end_s_entry = ctk.CTkEntry(
+                inner_row,
+                width=40,
+                height=28,
+                placeholder_text="0",
+                border_color="#475569",
+                fg_color="#1e293b",
+                text_color="#e2e8f0"
+            )
+            end_s_entry.pack(side="left")
+
+            # Pre-fill end time fields if available
             if file.custom_cut_end_seconds is not None:
-                end_entry.insert(0, self._seconds_to_time(file.custom_cut_end_seconds))
-            
+                h = int(file.custom_cut_end_seconds // 3600)
+                m = int((file.custom_cut_end_seconds % 3600) // 60)
+                s = int(file.custom_cut_end_seconds % 60)
+                if h > 0:
+                    end_h_entry.insert(0, str(h))
+                if m > 0 or h > 0:
+                    end_m_entry.insert(0, str(m))
+                if s > 0 or m > 0 or h > 0:
+                    end_s_entry.insert(0, str(s))
+
             def update_cut():
                 file.use_custom_cut = use_custom.get() == 1
                 try:
-                    start_text = start_entry.get().strip()
-                    file.custom_cut_start_seconds = self._time_to_seconds(start_text) if start_text else None
-                except:
+                    h = int(start_h_entry.get() or "0")
+                    m = int(start_m_entry.get() or "0")
+                    s = int(start_s_entry.get() or "0")
+                    file.custom_cut_start_seconds = h * 3600 + m * 60 + s if (h + m + s) > 0 else None
+                except (ValueError, TypeError):
                     file.custom_cut_start_seconds = None
                 try:
-                    end_text = end_entry.get().strip()
-                    file.custom_cut_end_seconds = self._time_to_seconds(end_text) if end_text else None
-                except:
+                    h = int(end_h_entry.get() or "0")
+                    m = int(end_m_entry.get() or "0")
+                    s = int(end_s_entry.get() or "0")
+                    file.custom_cut_end_seconds = h * 3600 + m * 60 + s if (h + m + s) > 0 else None
+                except (ValueError, TypeError):
                     file.custom_cut_end_seconds = None
-            
+
             use_custom.configure(command=update_cut)
-            start_entry.bind('<KeyRelease>', lambda e: update_cut())
-            end_entry.bind('<KeyRelease>', lambda e: update_cut())
+            start_h_entry.bind('<KeyRelease>', lambda e: update_cut())
+            start_m_entry.bind('<KeyRelease>', lambda e: update_cut())
+            start_s_entry.bind('<KeyRelease>', lambda e: update_cut())
+            end_h_entry.bind('<KeyRelease>', lambda e: update_cut())
+            end_m_entry.bind('<KeyRelease>', lambda e: update_cut())
+            end_s_entry.bind('<KeyRelease>', lambda e: update_cut())
         
         if file.status == FileStatus.PROCESSING:
             pb = ctk.CTkProgressBar(item)
@@ -1195,7 +1449,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
                 self.detection_results_frame,
                 text="Detection complete: no logo regions found in sampled frames.",
                 font=ctk.CTkFont(size=12),
-                text_color="#64748B"
+                text_color="#94a3b8"
             ).pack(anchor="w", padx=12, pady=12)
             return
 
@@ -1228,7 +1482,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             session.results, key=lambda r: r.confidence, reverse=True
         )
         for i, result in enumerate(sorted_results[:10]):  # Limit to 10 results
-            result_row = ctk.CTkFrame(self.detection_results_frame, fg_color="#f0f9ff", corner_radius=8)
+            result_row = ctk.CTkFrame(self.detection_results_frame, fg_color="#1e293b", corner_radius=8)
             result_row.pack(fill="x", padx=12, pady=4)
 
             # Result info with confidence emphasis
@@ -1261,7 +1515,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
                 self.detection_results_frame,
                 text=f"...and {num_results - 10} more",
                 font=ctk.CTkFont(size=11),
-                text_color="#64748B"
+                text_color="#94a3b8"
             ).pack(anchor="w", padx=12, pady=(0, 12))
 
     def _apply_detection_result(self, result):
@@ -1489,11 +1743,19 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         
         self.start_btn.pack_forget()
         self.stop_btn.pack(side="left", padx=(0, 12))
-    
+
+        # Show CPU meter if limiting is enabled
+        if self.state.cpu_limit_config.enabled:
+            self.cpu_meter_frame.pack(side="left", padx=(12, 0))
+            self._batch_cpu_polling = True
+            self._poll_batch_cpu()
+
     def _stop_processing(self):
         """Stop processing"""
         self._set_processing(False)
         self.state.add_log("Processing stopped by user")
+        self._batch_cpu_polling = False
+        self.cpu_meter_frame.pack_forget()
         self.stop_btn.pack_forget()
         self.start_btn.pack(side="left", padx=(0, 12))
     
@@ -1520,6 +1782,8 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
     
     def _on_processing_complete(self, failed_errors: list = None):
         """Handle completion"""
+        self._batch_cpu_polling = False
+        self.cpu_meter_frame.pack_forget()
         self.stop_btn.pack_forget()
         self.start_btn.pack(side="left", padx=(0, 12))
         self._update_file_list()
@@ -1531,9 +1795,23 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
                 summary += f"\n\n(... and {len(failed_errors) - 1} more - see Logs for details)"
             messagebox.showerror("Processing Failed", summary)
     
+    def _poll_batch_cpu(self):
+        """Poll CPU metrics and update the batch CPU meter"""
+        if not self._batch_cpu_polling:
+            return
+        metrics = self.state.current_cpu_metrics
+        if metrics:
+            pct = metrics.process_cpu_percent
+            limit = metrics.target_limit
+            self.batch_cpu_bar.set(min(1.0, pct / 100.0))
+            self.batch_cpu_label.configure(text=f"{pct:.0f}% / {limit}%")
+            color = "#22c55e" if metrics.is_within_limit else "#f59e0b"
+            self.batch_cpu_bar.configure(progress_color=color)
+        self.after(1000, self._poll_batch_cpu)
+
     def _on_log_update(self, message: str):
         pass
-    
+
     def _time_to_seconds(self, time_str: str) -> float:
         """Convert MM:SS or HH:MM:SS to seconds"""
         parts = time_str.split(":")
