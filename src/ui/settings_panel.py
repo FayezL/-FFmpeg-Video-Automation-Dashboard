@@ -11,7 +11,7 @@ class SettingsPanel(ctk.CTkScrollableFrame):
     """Settings panel view"""
     
     def __init__(self, parent, state: AppState):
-        super().__init__(parent, fg_color="#f0f9ff")
+        super().__init__(parent, fg_color="#0f172a")
         self.state = state
         
         self._create_ui()
@@ -33,7 +33,7 @@ class SettingsPanel(ctk.CTkScrollableFrame):
             header,
             text="Configure application settings",
             font=ctk.CTkFont(size=14),
-            text_color="#bae6fd"
+            text_color="#60a5fa"
         )
         subtitle.pack(anchor="w", pady=(5, 0))
         
@@ -50,7 +50,7 @@ class SettingsPanel(ctk.CTkScrollableFrame):
         """Create FFmpeg settings section"""
         from src.state import PROCESSING_PROFILES
 
-        ffmpeg_frame = ctk.CTkFrame(self, fg_color="#f0f9ff")
+        ffmpeg_frame = ctk.CTkFrame(self, fg_color="#0f172a")
         ffmpeg_frame.pack(fill="x", pady=(0, 20))
 
         title = ctk.CTkLabel(
@@ -97,7 +97,7 @@ class SettingsPanel(ctk.CTkScrollableFrame):
             content,
             text=info_text,
             font=ctk.CTkFont(size=13),
-            text_color="#bae6fd",
+            text_color="#60a5fa",
             justify="left",
             anchor="w"
         )
@@ -105,7 +105,7 @@ class SettingsPanel(ctk.CTkScrollableFrame):
     
     def _create_parallel_section(self):
         """Create parallel processing settings section"""
-        parallel_frame = ctk.CTkFrame(self, fg_color="#f0f9ff")
+        parallel_frame = ctk.CTkFrame(self, fg_color="#0f172a")
         parallel_frame.pack(fill="x", pady=(0, 20))
 
         title = ctk.CTkLabel(
@@ -126,7 +126,7 @@ class SettingsPanel(ctk.CTkScrollableFrame):
             workers_row,
             text="Max parallel jobs:",
             font=ctk.CTkFont(size=13),
-            text_color="#bae6fd",
+            text_color="#60a5fa",
             width=150
         ).pack(side="left", padx=(0, 12))
 
@@ -144,7 +144,7 @@ class SettingsPanel(ctk.CTkScrollableFrame):
             workers_row,
             text=str(self.state.parallel_config.max_workers),
             font=ctk.CTkFont(size=13),
-            text_color="#f0f9ff",
+            text_color="#0f172a",
             width=30
         )
         self.workers_label.pack(side="left")
@@ -171,7 +171,7 @@ class SettingsPanel(ctk.CTkScrollableFrame):
     
     def _create_about_section(self):
         """Create about section"""
-        about_frame = ctk.CTkFrame(self, fg_color="#f0f9ff")
+        about_frame = ctk.CTkFrame(self, fg_color="#0f172a")
         about_frame.pack(fill="x", pady=(0, 20))
         
         title = ctk.CTkLabel(
@@ -203,7 +203,7 @@ class SettingsPanel(ctk.CTkScrollableFrame):
             content,
             text=about_text,
             font=ctk.CTkFont(size=13),
-            text_color="#bae6fd",
+            text_color="#60a5fa",
             justify="left",
             anchor="w"
         )

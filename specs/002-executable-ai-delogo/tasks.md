@@ -102,38 +102,38 @@
 
 **Data Models (can run in parallel)**:
 
-- [ ] T032 [P] [US2] Create DetectionResult dataclass in src/data_models.py
-- [ ] T033 [P] [US2] Create DetectionSession dataclass in src/data_models.py
-- [ ] T034 [P] [US2] Create DetectionConfig dataclass with defaults in src/data_models.py
+- [x] T032 [P] [US2] Create DetectionResult dataclass in src/data_models.py
+- [x] T033 [P] [US2] Create DetectionSession dataclass in src/data_models.py
+- [x] T034 [P] [US2] Create DetectionConfig dataclass with defaults in src/data_models.py
 
 **Core Detection Logic**:
 
-- [ ] T035 [US2] Create logo detector module at src/logo_detector.py (depends on T032-T034)
-- [ ] T036 [US2] Implement frame sampling function (every 30th frame) in src/logo_detector.py
-- [ ] T037 [US2] Implement frame preprocessing (grayscale, blur, normalize) in src/logo_detector.py
-- [ ] T038 [US2] Implement Canny edge detection algorithm in src/logo_detector.py
+- [x] T035 [US2] Create logo detector module at src/logo_detector.py (depends on T032-T034)
+- [x] T036 [US2] Implement frame sampling function (every 30th frame) in src/logo_detector.py
+- [x] T037 [US2] Implement frame preprocessing (grayscale, blur, normalize) in src/logo_detector.py
+- [x] T038 [US2] Implement Canny edge detection algorithm in src/logo_detector.py
 - [ ] T039 [US2] Implement Harris corner detection algorithm in src/logo_detector.py
-- [ ] T040 [US2] Implement region filtering (size, aspect ratio, position) in src/logo_detector.py
-- [ ] T041 [US2] Implement region clustering (merge overlapping detections) in src/logo_detector.py
-- [ ] T042 [US2] Implement confidence scoring algorithm in src/logo_detector.py
-- [ ] T043 [US2] Implement detect_logos() main function with progress callbacks in src/logo_detector.py
+- [x] T040 [US2] Implement region filtering (size, aspect ratio, position) in src/logo_detector.py
+- [x] T041 [US2] Implement region clustering (merge overlapping detections) in src/logo_detector.py
+- [x] T042 [US2] Implement confidence scoring algorithm in src/logo_detector.py
+- [x] T043 [US2] Implement detect_logos() main function with progress callbacks in src/logo_detector.py
 - [ ] T044 [US2] Implement preview_detection() function with bounding box overlay in src/logo_detector.py
-- [ ] T045 [US2] Add error handling and timeout (5 minute max) in src/logo_detector.py
-- [ ] T046 [US2] Add cancellation support via threading.Event in src/logo_detector.py
+- [x] T045 [US2] Add error handling and timeout (5 minute max) in src/logo_detector.py
+- [x] T046 [US2] Add cancellation support via threading.Event in src/logo_detector.py
 
 **UI Integration**:
 
 - [ ] T047 [US2] Create logo preview widget at src/ui/logo_preview.py for displaying detection results
 - [ ] T048 [US2] Implement bounding box drawing with confidence labels in src/ui/logo_preview.py
-- [ ] T049 [US2] Add "Detect Logos" button to delogo section in src/ui/batch_processor.py
+- [x] T049 [US2] Add "Detect Logos" button to delogo section in src/ui/batch_processor.py
 - [ ] T050 [US2] Add progress bar for detection progress in src/ui/batch_processor.py
-- [ ] T051 [US2] Add "Cancel" button for detection in src/ui/batch_processor.py
-- [ ] T052 [US2] Implement threaded detection controller in src/ui/batch_processor.py (background thread + UI updates via queue)
-- [ ] T053 [US2] Implement detection result list/grid UI in src/ui/batch_processor.py
-- [ ] T054 [US2] Implement accept/reject buttons for each detection result in src/ui/batch_processor.py
-- [ ] T055 [US2] Implement auto-population of delogo X, Y, W, H parameters on accept in src/ui/batch_processor.py
-- [ ] T056 [US2] Add status messages ("Detecting...", "Found 3 regions", "No logos detected") in src/ui/batch_processor.py
-- [ ] T057 [US2] Add error display for detection failures in src/ui/batch_processor.py
+- [x] T051 [US2] Add "Cancel" button for detection in src/ui/batch_processor.py
+- [x] T052 [US2] Implement threaded detection controller in src/ui/batch_processor.py (background thread + UI updates via queue)
+- [x] T053 [US2] Implement detection result list/grid UI in src/ui/batch_processor.py
+- [x] T054 [US2] Implement accept/reject buttons for each detection result in src/ui/batch_processor.py
+- [x] T055 [US2] Implement auto-population of delogo X, Y, W, H parameters on accept in src/ui/batch_processor.py
+- [x] T056 [US2] Add status messages ("Detecting...", "Found 3 regions", "No logos detected") in src/ui/batch_processor.py
+- [x] T057 [US2] Add error display for detection failures in src/ui/batch_processor.py
 
 **Utility Functions**:
 
@@ -171,26 +171,26 @@
 
 **Data Models**:
 
-- [ ] T069 [P] [US3] Create DetectionProfile dataclass in src/data_models.py
+- [x] T069 [P] [US3] Create DetectionProfile dataclass in src/data_models.py
 - [ ] T070 [P] [US3] Create LogoPattern dataclass in src/data_models.py
 - [ ] T071 [P] [US3] Create ProfileStatistics dataclass in src/data_models.py
 
 **Profile Management**:
 
-- [ ] T072 [US3] Create detection profiles module at src/detection_profiles.py (depends on T069-T071)
-- [ ] T073 [US3] Implement save_profile() function with JSON serialization in src/detection_profiles.py
-- [ ] T074 [US3] Implement load_profile() function with validation in src/detection_profiles.py
-- [ ] T075 [US3] Implement list_profiles() function with metadata extraction in src/detection_profiles.py
-- [ ] T076 [US3] Implement delete_profile() function with confirmation in src/detection_profiles.py
-- [ ] T077 [US3] Implement profile filename sanitization (spaces to underscores, lowercase) in src/detection_profiles.py
-- [ ] T078 [US3] Create profiles directory at %APPDATA%/MagicTVBox/profiles/ on first run in src/detection_profiles.py
+- [x] T072 [US3] Create detection profiles module at src/detection_profiles.py (depends on T069-T071)
+- [x] T073 [US3] Implement save_profile() function with JSON serialization in src/detection_profiles.py
+- [x] T074 [US3] Implement load_profile() function with validation in src/detection_profiles.py
+- [x] T075 [US3] Implement list_profiles() function with metadata extraction in src/detection_profiles.py
+- [x] T076 [US3] Implement delete_profile() function with confirmation in src/detection_profiles.py
+- [x] T077 [US3] Implement profile filename sanitization (spaces to underscores, lowercase) in src/detection_profiles.py
+- [x] T078 [US3] Create profiles directory at %APPDATA%/MagicTVBox/profiles/ on first run in src/detection_profiles.py
 - [ ] T079 [US3] Add profile version migration support (future-proofing) in src/detection_profiles.py
 
 **Sensitivity Adjustment**:
 
-- [ ] T080 [US3] Add sensitivity slider to detection UI in src/ui/batch_processor.py
+- [x] T080 [US3] Add sensitivity slider to detection UI in src/ui/batch_processor.py
 - [ ] T081 [US3] Implement sensitivity change handler (re-run detection with new threshold) in src/ui/batch_processor.py
-- [ ] T082 [US3] Update DetectionConfig when sensitivity changes in src/logo_detector.py
+- [x] T082 [US3] Update DetectionConfig when sensitivity changes in src/logo_detector.py
 
 **Template Matching (Optional Enhancement)**:
 
@@ -200,13 +200,13 @@
 
 **UI - Profile Management**:
 
-- [ ] T086 [US3] Add "Save Profile" button to detection UI in src/ui/batch_processor.py
-- [ ] T087 [US3] Add "Load Profile" dropdown to detection UI in src/ui/batch_processor.py
+- [x] T086 [US3] Add "Save Profile" button to detection UI in src/ui/batch_processor.py
+- [x] T087 [US3] Add "Load Profile" dropdown to detection UI in src/ui/batch_processor.py
 - [ ] T088 [US3] Implement profile name input dialog in src/ui/batch_processor.py
 - [ ] T089 [US3] Implement "Manage Profiles" dialog (list, view stats, delete) in src/ui/batch_processor.py
 - [ ] T090 [US3] Add profile description and tags input fields in src/ui/batch_processor.py
-- [ ] T091 [US3] Populate profile dropdown on app startup in src/ui/batch_processor.py
-- [ ] T092 [US3] Apply loaded profile to detection config in src/ui/batch_processor.py
+- [x] T091 [US3] Populate profile dropdown on app startup in src/ui/batch_processor.py
+- [x] T092 [US3] Apply loaded profile to detection config in src/ui/batch_processor.py
 
 **Profile Statistics**:
 

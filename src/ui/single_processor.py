@@ -16,7 +16,7 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
     """Single file processor view"""
     
     def __init__(self, parent, state: AppState, processor: VideoProcessor):
-        super().__init__(parent, fg_color="#f0f9ff")
+        super().__init__(parent, fg_color="#0f172a")
         self.state = state
         self.processor = processor
         self.selected_file = None
@@ -43,7 +43,7 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
             header,
             text="Process a single video file",
             font=ctk.CTkFont(size=14),
-            text_color="#bae6fd"
+            text_color="#60a5fa"
         )
         subtitle.pack(anchor="w", pady=(5, 0))
         
@@ -61,7 +61,7 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
     
     def _create_options_section(self):
         """Create processing options section"""
-        options_frame = ctk.CTkFrame(self, fg_color="#f0f9ff")
+        options_frame = ctk.CTkFrame(self, fg_color="#0f172a")
         options_frame.pack(fill="x", pady=(0, 20))
         
         title = ctk.CTkLabel(
@@ -93,7 +93,7 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
             self.cut_time_frame,
             text="Minutes:",
             font=ctk.CTkFont(size=12),
-            text_color="#bae6fd"
+            text_color="#60a5fa"
         ).pack(side="left", padx=(0, 8))
 
         self.cut_minutes_entry = ctk.CTkEntry(
@@ -108,7 +108,7 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
             self.cut_time_frame,
             text="Seconds:",
             font=ctk.CTkFont(size=12),
-            text_color="#bae6fd"
+            text_color="#60a5fa"
         ).pack(side="left", padx=(0, 8))
 
         self.cut_seconds_entry = ctk.CTkEntry(
@@ -158,7 +158,7 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
             options_content,
             text=PROCESSING_PROFILES[self.state.processing_profile].description,
             font=ctk.CTkFont(size=11),
-            text_color="#bae6fd",
+            text_color="#60a5fa",
             wraplength=450,
             anchor="w",
             justify="left"
@@ -204,7 +204,7 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
     
     def _create_file_section(self):
         """Create file selection section"""
-        file_frame = ctk.CTkFrame(self, fg_color="#f0f9ff")
+        file_frame = ctk.CTkFrame(self, fg_color="#0f172a")
         file_frame.pack(fill="x", pady=(0, 20))
         
         content = ctk.CTkFrame(file_frame, fg_color="transparent")
@@ -218,7 +218,7 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
             input_frame,
             text="Input File",
             font=ctk.CTkFont(size=14),
-            text_color="#bae6fd"
+            text_color="#60a5fa"
         )
         input_label.pack(anchor="w", pady=(0, 5))
         
@@ -228,8 +228,8 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
             command=self._select_file,
             height=40,
             anchor="w",
-            fg_color="#f0f9ff",
-            hover_color="#f0f9ff"
+            fg_color="#0f172a",
+            hover_color="#0f172a"
         )
         self.input_file_btn.pack(fill="x")
         
@@ -241,7 +241,7 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
             output_frame,
             text="Output Folder",
             font=ctk.CTkFont(size=14),
-            text_color="#bae6fd"
+            text_color="#60a5fa"
         )
         output_label.pack(anchor="w", pady=(0, 5))
         
@@ -251,8 +251,8 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
             command=self._select_output_folder,
             height=40,
             anchor="w",
-            fg_color="#f0f9ff",
-            hover_color="#f0f9ff"
+            fg_color="#0f172a",
+            hover_color="#0f172a"
         )
         self.output_folder_btn.pack(fill="x")
     
@@ -264,8 +264,8 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
             command=self._process_file,
             height=50,
             font=ctk.CTkFont(size=16, weight="bold"),
-            fg_color="#0ea5e9",
-            hover_color="#38bdf8"
+            fg_color="#2563eb",
+            hover_color="#3b82f6"
         )
         self.process_btn.pack(fill="x", pady=(0, 20))
     
@@ -382,7 +382,7 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
         if self.progress_frame:
             self.progress_frame.destroy()
         
-        self.progress_frame = ctk.CTkFrame(self, fg_color="#f0f9ff")
+        self.progress_frame = ctk.CTkFrame(self, fg_color="#0f172a")
         self.progress_frame.pack(fill="x", pady=(0, 20))
         
         progress_content = ctk.CTkFrame(self.progress_frame, fg_color="transparent")
@@ -403,7 +403,7 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
             progress_content,
             text="0%",
             font=ctk.CTkFont(size=12),
-            text_color="#bae6fd"
+            text_color="#60a5fa"
         )
         self.progress_percent.pack(anchor="w", pady=(5, 0))
         
