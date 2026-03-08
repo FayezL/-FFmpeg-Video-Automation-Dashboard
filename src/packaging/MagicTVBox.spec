@@ -44,14 +44,20 @@ if not os.path.exists(icon_path):
     icon_path = None
     print("[INFO] No custom icon found, using default Windows icon")
 
+# Prepare data files
+datas = []
+assets_path = os.path.join(spec_dir, 'assets')
+if os.path.exists(assets_path):
+    datas.append(('assets', 'assets'))
+    print(f"[INFO] Assets directory found: {assets_path}")
+else:
+    print("[INFO] No assets directory found (optional)")
+
 a = Analysis(
     ['../../main.py'],  # Entry point (relative to this spec file)
     pathex=[],
     binaries=binaries,
-    datas=[
-        # UI assets (if any exist)
-        ('../packaging/assets', 'assets'),
-    ],
+    datas=datas,
     hiddenimports=[
         # CustomTkinter and tkinter
         'customtkinter',
