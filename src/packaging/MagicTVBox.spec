@@ -14,7 +14,7 @@ import sys
 block_cipher = None
 
 # Get the directory where this spec file is located
-spec_dir = os.path.dirname(os.path.abspath(__file__))
+spec_dir = os.path.dirname(os.path.abspath(__name__))
 project_root = os.path.dirname(os.path.dirname(spec_dir))
 
 # Determine FFmpeg path
