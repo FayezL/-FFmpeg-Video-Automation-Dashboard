@@ -14,8 +14,18 @@ import sys
 block_cipher = None
 
 # Get the directory where this spec file is located
-spec_dir = os.path.dirname(os.path.abspath(__name__))
+# SPECPATH is automatically set by PyInstaller when running the spec file
+try:
+    spec_dir = SPECPATH
+except NameError:
+    # Fallback: derive from the spec file location
+    spec_dir = os.path.dirname(os.path.abspath(sys.argv[0] if sys.argv[0] else '.'))
+
 project_root = os.path.dirname(os.path.dirname(spec_dir))
+
+# Debug output
+print(f"[DEBUG] spec_dir: {spec_dir}")
+print(f"[DEBUG] project_root: {project_root}")
 
 # Determine FFmpeg path
 ffmpeg_path = None
@@ -48,24 +58,25 @@ if not os.path.exists(icon_path):
 datas = []
 assets_path = os.path.join(spec_dir, 'assets')
 if os.path.exists(assets_path):
-    datas.append(('assets', 'assets'))
+    datas.append((assets_path, 'assets'))
     print(f"[INFO] Assets directory found: {assets_path}")
 else:
     print("[INFO] No assets directory found (optional)")
 
+# Build the Analysis
 a = Analysis(
-    ['../../main.py'],  # Entry point (relative to this spec file)
-    pathex=[],
+    [os.path.join(project_root, 'main.py')],  # Entry point (absolute path)
+    pathex=[project_root],  # Add project root to path
     binaries=binaries,
     datas=datas,
     hiddenimports=[
         # CustomTkinter and tkinter
         'customtkinter',
         'PIL._tkinter_finder',
-
+        
         # Required for existing features
         'tkinterdnd2',
-
+        
         # OpenCV and NumPy (Phase 4: AI Logo Detection)
         'cv2',
         'numpy.core._multiarray_umath',
@@ -95,6 +106,14 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+# Build the EXE with proper version file path
+version_file = os.path.join(spec_dir, 'version_info.txt')
+if not os.path.exists(version_file):
+    print(f"[WARNING] Version file not found: {version_file}")
+    version_file = None
+else:
+    print(f"[INFO] Version file found: {version_file}")
+
 exe = EXE(
     pyz,
     a.scripts,
@@ -115,6 +134,7 @@ exe = EXE(
         'python311.dll',
         'python312.dll',
         'python313.dll',
+        'python314.dll',
     ],
     runtime_tmpdir=None,
     console=False,  # No console window for GUI application
@@ -123,5 +143,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=icon_path,
-    version=os.path.join(spec_dir, 'version_info.txt'),
+    version=version_file,
 )
