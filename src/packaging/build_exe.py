@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Automated build script for MagicTVBox executable
+Automated build script for VideoForge executable
 
 This script builds the standalone Windows executable using PyInstaller.
 
@@ -19,13 +19,11 @@ from pathlib import Path
 
 
 def main():
-    """Main build process"""
     print("=" * 60)
-    print("MagicTVBox Executable Build Script")
+    print("VideoForge Executable Build Script")
     print("=" * 60)
     print()
 
-    # Get project root (2 levels up from this script)
     script_dir = Path(__file__).parent
     project_root = script_dir.parent.parent
 
@@ -33,21 +31,19 @@ def main():
     print(f"Build script: {script_dir}")
     print()
 
-    # Change to project root for build
     os.chdir(project_root)
     print(f"Working directory: {os.getcwd()}")
     print()
 
-    # Check if PyInstaller is installed
     try:
         import PyInstaller
+
         print(f"[OK] PyInstaller version: {PyInstaller.__version__}")
     except ImportError:
         print("[ERROR] PyInstaller not found!")
         print("  Install with: pip install -r requirements.txt")
         return 1
 
-    # Check if FFmpeg exists
     ffmpeg_path = Path("C:/ffmpeg/bin/ffmpeg.exe")
     if ffmpeg_path.exists():
         print(f"[OK] FFmpeg found at: {ffmpeg_path}")
@@ -61,7 +57,6 @@ def main():
     print("-" * 60)
     print()
 
-    # Clean previous builds
     if Path("build").exists():
         print("Cleaning previous build directory...")
         shutil.rmtree("build")
@@ -72,8 +67,7 @@ def main():
 
     print()
 
-    # Run PyInstaller with spec file
-    spec_file = script_dir / "MagicTVBox.spec"
+    spec_file = script_dir / "VideoForge.spec"
 
     if not spec_file.exists():
         print(f"[ERROR] Spec file not found: {spec_file}")
@@ -83,9 +77,15 @@ def main():
     print()
 
     try:
-        # Run PyInstaller
         result = subprocess.run(
-            [sys.executable, "-m", "PyInstaller", "--clean", "--noconfirm", str(spec_file)],
+            [
+                sys.executable,
+                "-m",
+                "PyInstaller",
+                "--clean",
+                "--noconfirm",
+                str(spec_file),
+            ],
             capture_output=False,
             text=True,
         )
@@ -105,8 +105,7 @@ def main():
     print("=" * 60)
     print()
 
-    # Check output
-    exe_path = Path("dist/MagicTVBox.exe")
+    exe_path = Path("dist/VideoForge.exe")
     if exe_path.exists():
         size_mb = exe_path.stat().st_size / (1024 * 1024)
         print(f"[OK] Executable created: {exe_path}")
@@ -119,7 +118,7 @@ def main():
 
         print()
         print("Next steps:")
-        print("  1. Test the executable: dist\\MagicTVBox.exe")
+        print("  1. Test the executable: dist\\VideoForge.exe")
         print("  2. Test on a machine without Python installed")
         print("  3. Verify all features work correctly")
     else:

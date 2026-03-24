@@ -18,6 +18,7 @@ from src.state import CutMode
 @dataclass
 class Template:
     """Saved configuration preset"""
+
     name: str
     description: str
     created_timestamp: float
@@ -55,11 +56,11 @@ class Template:
         """
         data = asdict(self)
         # Convert enum to string
-        data['trim_mode'] = self.trim_mode.value
+        data["trim_mode"] = self.trim_mode.value
         return data
 
     @staticmethod
-    def from_dict(data: Dict[str, Any]) -> 'Template':
+    def from_dict(data: Dict[str, Any]) -> "Template":
         """
         Deserialize template from dictionary.
 
@@ -73,9 +74,9 @@ class Template:
             ValueError: If data is invalid
         """
         # Convert trim_mode string to enum
-        if 'trim_mode' in data:
-            if isinstance(data['trim_mode'], str):
-                data['trim_mode'] = CutMode(data['trim_mode'])
+        if "trim_mode" in data:
+            if isinstance(data["trim_mode"], str):
+                data["trim_mode"] = CutMode(data["trim_mode"])
 
         return Template(**data)
 
@@ -88,11 +89,11 @@ class TemplateManager:
         Initialize template manager.
 
         Args:
-            templates_dir: Directory for template storage. Defaults to ~/.magictvbox/templates/
+            templates_dir: Directory for template storage. Defaults to ~/.videoforge/templates/
         """
         if templates_dir is None:
             home = Path.home()
-            templates_dir = str(home / ".magictvbox" / "templates")
+            templates_dir = str(home / ".videoforge" / "templates")
 
         self.templates_dir = Path(templates_dir)
         self.templates_dir.mkdir(parents=True, exist_ok=True)
@@ -115,8 +116,8 @@ class TemplateManager:
 
         try:
             # Atomic write: write to temp file then rename
-            temp_path = file_path.with_suffix('.tmp')
-            with open(temp_path, 'w', encoding='utf-8') as f:
+            temp_path = file_path.with_suffix(".tmp")
+            with open(temp_path, "w", encoding="utf-8") as f:
                 json.dump(template.to_dict(), f, indent=2)
 
             # Rename temp file to actual file (atomic on most systems)
@@ -145,7 +146,7 @@ class TemplateManager:
             raise FileNotFoundError(f"Template '{name}' not found")
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             return Template.from_dict(data)
 
@@ -161,12 +162,12 @@ class TemplateManager:
         """
         templates = []
 
-        for file_path in self.templates_dir.glob('*.json'):
+        for file_path in self.templates_dir.glob("*.json"):
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    name = data.get('name', file_path.stem)
-                    description = data.get('description', '')
+                    name = data.get("name", file_path.stem)
+                    description = data.get("description", "")
                     templates.append((name, description))
             except:
                 # Skip invalid template files
@@ -220,12 +221,14 @@ class TemplateManager:
         export_path_obj = Path(export_path)
 
         try:
-            with open(export_path_obj, 'w', encoding='utf-8') as f:
+            with open(export_path_obj, "w", encoding="utf-8") as f:
                 json.dump(template.to_dict(), f, indent=2)
         except OSError as e:
             raise IOError(f"Failed to export template: {e}")
 
-    def import_template(self, import_path: str, new_name: Optional[str] = None) -> Template:
+    def import_template(
+        self, import_path: str, new_name: Optional[str] = None
+    ) -> Template:
         """
         Import a template from a file.
 
@@ -246,7 +249,7 @@ class TemplateManager:
             raise FileNotFoundError(f"Import file not found: {import_path}")
 
         try:
-            with open(import_path_obj, 'r', encoding='utf-8') as f:
+            with open(import_path_obj, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
             template = Template.from_dict(data)
@@ -277,7 +280,7 @@ class TemplateManager:
             return False
 
         # Disallow path separators and special characters
-        invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '\0']
+        invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|", "\0"]
         return not any(char in name for char in invalid_chars)
 
     def _get_template_path(self, name: str) -> Path:

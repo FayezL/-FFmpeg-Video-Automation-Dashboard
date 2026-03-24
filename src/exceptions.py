@@ -1,5 +1,5 @@
 """
-Exception hierarchy for MagicTVBox application
+Exception hierarchy for VideoForge application
 
 This module defines custom exceptions for error handling throughout
 the application, particularly for logo detection features.
@@ -8,6 +8,7 @@ the application, particularly for logo detection features.
 
 class DetectionError(Exception):
     """Base exception for all detection-related errors"""
+
     pass
 
 
@@ -22,11 +23,13 @@ class VideoReadError(DetectionError):
 
 class InvalidVideoFormatError(VideoReadError):
     """Video format is not supported"""
+
     pass
 
 
 class DetectionFailedError(DetectionError):
     """Detection process failed"""
+
     pass
 
 
@@ -51,6 +54,7 @@ class DetectionCancelledError(DetectionFailedError):
 
 class ProfileError(DetectionError):
     """Base exception for profile-related errors"""
+
     pass
 
 
@@ -87,5 +91,5 @@ class FrameNotFoundError(VideoReadError):
         self.total_frames = total_frames
         super().__init__(
             f"Frame {frame_index} not found (video has {total_frames} frames)",
-            "Invalid frame index"
+            "Invalid frame index",
         )

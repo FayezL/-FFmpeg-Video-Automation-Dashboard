@@ -1,3 +1,3 @@
-# MagicTVBox Python Package
+# VideoForge Python Package
 
 

@@ -1,11 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec file for MagicTVBox
+PyInstaller spec file for VideoForge
 
 This file configures how PyInstaller bundles the application into
 a standalone Windows executable.
 
-To build: pyinstaller src/packaging/MagicTVBox.spec
+To build: pyinstaller src/packaging/VideoForge.spec
 """
 
 import os
@@ -121,7 +121,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='MagicTVBox',
+    name='VideoForge',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

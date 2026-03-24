@@ -18,15 +18,17 @@ class FileStatus(Enum):
 
 class CutMode(Enum):
     """Video trimming mode"""
+
     NONE = "none"
-    CUT_LAST = "cut_last"      # Cut last X minutes
-    CUT_FIRST = "cut_first"    # Cut first X minutes
-    CUT_RANGE = "cut_range"    # Cut from start_time to end_time
+    CUT_LAST = "cut_last"  # Cut last X minutes
+    CUT_FIRST = "cut_first"  # Cut first X minutes
+    CUT_RANGE = "cut_range"  # Cut from start_time to end_time
 
 
 @dataclass
 class ProcessingFile:
     """Represents a file being processed"""
+
     id: str
     path: str
     name: str
@@ -36,12 +38,13 @@ class ProcessingFile:
     # Per-file cut times (override global settings if set)
     use_custom_cut: bool = False
     custom_cut_start_seconds: Optional[float] = None  # Start time for this file
-    custom_cut_end_seconds: Optional[float] = None    # End time (None = to end)
+    custom_cut_end_seconds: Optional[float] = None  # End time (None = to end)
 
 
 @dataclass
 class DelogoParams:
     """Delogo filter parameters"""
+
     x: int = 1635
     y: int = 240
     w: int = 176
@@ -51,6 +54,7 @@ class DelogoParams:
 @dataclass
 class ProcessingProfile:
     """Video encoding profile settings"""
+
     name: str
     description: str
 
@@ -70,7 +74,7 @@ class ProcessingProfile:
 
     # Compatibility flags
     x264_profile: Optional[str] = None  # baseline, main, high
-    x264_level: Optional[str] = None    # 3.0, 3.1, 4.0, etc.
+    x264_level: Optional[str] = None  # 3.0, 3.1, 4.0, etc.
     max_width: Optional[int] = None
     max_height: Optional[int] = None
 
@@ -78,6 +82,7 @@ class ProcessingProfile:
 @dataclass
 class ParallelProcessingConfig:
     """Configuration for parallel batch processing"""
+
     max_workers: int = 2
     auto_adjust: bool = True
     memory_limit_per_worker_mb: int = 2048
@@ -113,6 +118,7 @@ class ParallelProcessingConfig:
 @dataclass
 class HardwareEncoder:
     """Detected hardware video encoder"""
+
     name: str  # e.g., "NVENC", "QuickSync", "VideoToolbox"
     codec: str  # e.g., "h264_nvenc", "h264_qsv"
     description: str
@@ -123,6 +129,7 @@ class HardwareEncoder:
 @dataclass
 class VideoFilter:
     """Single video filter with parameters"""
+
     filter_type: str  # rotate, crop, scale, brightness, etc.
     enabled: bool = False
     params: Dict[str, Any] = field(default_factory=dict)
@@ -131,6 +138,7 @@ class VideoFilter:
 @dataclass
 class FilterChain:
     """Ordered chain of video filters"""
+
     filters: List[VideoFilter] = field(default_factory=list)
 
     def is_empty(self) -> bool:
@@ -153,7 +161,7 @@ PROCESSING_PROFILES = {
         x264_profile="baseline",
         x264_level="3.1",
         max_width=1920,
-        max_height=1080
+        max_height=1080,
     ),
     "high_quality": ProcessingProfile(
         name="High Quality",
@@ -161,14 +169,14 @@ PROCESSING_PROFILES = {
         video_preset="slow",
         video_crf=18,
         x264_profile="high",
-        audio_bitrate="256k"
+        audio_bitrate="256k",
     ),
     "small_file": ProcessingProfile(
         name="Smaller File Size",
         description="Faster streaming, lower quality - good for quick uploads or bandwidth-constrained scenarios",
         video_preset="fast",
         video_crf=28,
-        audio_bitrate="128k"
+        audio_bitrate="128k",
     ),
     "ios_optimized": ProcessingProfile(
         name="iOS Optimized",
@@ -179,162 +187,140 @@ PROCESSING_PROFILES = {
         x264_level="4.0",
         audio_codec="aac",
         audio_bitrate="192k",
-        use_faststart=True
-    )
+        use_faststart=True,
+    ),
 }
 
 
 class AppState:
-    """Application state singleton"""
-
     def __init__(self):
-        # Files
         self.selected_files: List[ProcessingFile] = []
-        self.input_folder: Optional[str] = None  # For folder-based input
+        self.input_folder: Optional[str] = None
         self.output_folder: Optional[str] = None
 
-        # Cut/Trim options
+        self.cut_start_enabled: bool = False
+        self.cut_end_enabled: bool = True
+        self.cut_start_hours: float = 0.0
+        self.cut_start_minutes: float = 2.0
+        self.cut_start_seconds: float = 30.0
+        self.cut_end_hours_amount: float = 0.0
+        self.cut_end_minutes_amount: float = 3.0
+        self.cut_end_seconds_amount: float = 0.0
+
         self.cut_mode: CutMode = CutMode.CUT_LAST
+        self.cut_hours: float = 0.0
+        self.cut_minutes: float = 5.0
+        self.cut_seconds: float = 0.0
+        self.cut_start_hours_range: float = 0.0
+        self.cut_start_minutes_range: float = 0.0
+        self.cut_start_seconds_range: float = 0.0
+        self.cut_end_hours: Optional[float] = None
+        self.cut_end_minutes: Optional[float] = None
+        self.cut_end_seconds: Optional[float] = None
 
-        # For CUT_LAST and CUT_FIRST modes: Amount of time to remove
-        self.cut_hours: float = 0.0            # Hours to cut (last or first)
-        self.cut_minutes: float = 5.0          # Minutes to cut (last or first)
-        self.cut_seconds: float = 0.0          # Seconds to cut (last or first)
-
-        # For CUT_RANGE mode: Absolute timestamps
-        self.cut_start_hours: float = 0.0      # Start time hours (absolute position)
-        self.cut_start_minutes: float = 0.0    # Start time minutes (absolute position)
-        self.cut_start_seconds: float = 0.0    # Start time seconds (absolute position)
-        self.cut_end_hours: Optional[float] = None    # End time hours (None = to end of video)
-        self.cut_end_minutes: Optional[float] = None  # End time minutes (None = to end of video)
-        self.cut_end_seconds: Optional[float] = None  # End time seconds (None = to end of video)
-
-        # Legacy compatibility
         self.cut_last_5_minutes: bool = True
 
-        # Processing options
         self.apply_delogo: bool = False
         self.delogo_params: DelogoParams = DelogoParams()
-        self.processing_profile: str = "universal"  # Key into PROCESSING_PROFILES
+        self.processing_profile: str = "universal"
 
-        # Output options
-        self.output_format: str = "mp4"         # mp4, mkv
-        self.output_suffix: str = ""             # e.g. "_processed"
-        self.output_prefix: str = ""             # e.g. "converted_"
-        self.create_output_subfolder: bool = False  # Create "output" subfolder
+        self.output_format: str = "mp4"
+        self.output_suffix: str = ""
+        self.output_prefix: str = ""
+        self.create_output_subfolder: bool = False
         self.overwrite_existing: bool = True
 
-        # Rename Plan — sequential episode numbering for any batch size (1 to 50+)
-        # When enabled, output files are named: {rename_base}{N:0rename_pad}{ext}
-        # e.g. rename_base="hamo", rename_start=1, rename_pad=2 → hamo01, hamo02 …
-        self.rename_enabled: bool = False   # Toggle rename plan on/off
-        self.rename_base: str = ""          # Base name  (e.g. "hamo")
-        self.rename_start: int = 1          # First episode number (default 1)
-        self.rename_pad: int = 2            # Zero-pad width: 2→"01", 3→"001"
+        self.rename_enabled: bool = False
+        self.rename_base: str = ""
+        self.rename_start: int = 1
+        self.rename_pad: int = 2
 
-        # Processing state
         self.is_processing: bool = False
         self.current_file_index: int = 0
 
-        # Second task slot (Task 2) - separate file list and output so you can run two batches and know what is where
         self.task2_files: List[ProcessingFile] = []
         self.task2_output_folder: Optional[str] = None
         self.task2_processing: bool = False
 
-        # Additional task slots (Task 3, 4, ...) - each dict: files, output_folder, processing
         self.extra_task_slots: List[Dict[str, Any]] = []
 
-        # Logs
         self.logs: List[str] = []
         self.log_callbacks: List[Callable[[str], None]] = []
 
-        # Template management (T011-T012)
-        self.current_template: Optional[str] = None  # Name of loaded template
-        self.template_modified: bool = False  # True if settings differ from loaded template
+        self.current_template: Optional[str] = None
+        self.template_modified: bool = False
 
-        # Parallel processing (T013-T014)
         self.parallel_config: ParallelProcessingConfig = ParallelProcessingConfig()
-        self.active_processes: List[str] = []  # IDs of currently processing files
+        self.active_processes: List[str] = []
 
-        # Hardware encoding (T015-T017)
         self.detected_encoders: List[HardwareEncoder] = []
         self.use_hardware_encoding: bool = False
         self.selected_encoder: Optional[HardwareEncoder] = None
 
-        # Video filters (T018)
         self.filter_chain: FilterChain = FilterChain()
 
-        # Metadata caching (T019)
         self._metadata_cache: Dict[str, Any] = {}
 
-        # Batch state management (T020)
-        self.current_batch_state: Optional[Any] = None  # Will be BatchState once defined
+        self.current_batch_state: Optional[Any] = None
 
-        # Logo detection (Phase 4 - User Story 2) - Placeholders for MVP
-        self.detection_enabled: bool = False  # Enable logo detection feature
-        self.detection_results: List[Any] = []  # Will store DetectionResult objects
-        self.active_profile: Optional[str] = None  # Name of active detection profile
-        self.detection_progress: float = 0.0  # Detection progress (0.0-1.0)
-        self.detection_status: str = "idle"  # idle, running, completed, cancelled, error
+        self.detection_enabled: bool = False
+        self.detection_results: List[Any] = []
+        self.active_profile: Optional[str] = None
+        self.detection_progress: float = 0.0
+        self.detection_status: str = "idle"
 
     def add_log(self, message: str):
-        """Add a log message and notify callbacks"""
         self.logs.append(message)
         for callback in self.log_callbacks:
             callback(message)
-    
+
     def clear_logs(self):
-        """Clear all logs"""
         self.logs.clear()
-    
+
     def register_log_callback(self, callback: Callable[[str], None]):
-        """Register a callback for log updates"""
         self.log_callbacks.append(callback)
-    
+
     def unregister_log_callback(self, callback: Callable[[str], None]):
-        """Unregister a log callback"""
         if callback in self.log_callbacks:
             self.log_callbacks.remove(callback)
 
-    # Time helper properties
     @property
     def cut_total_seconds(self) -> float:
-        """
-        Total cut time in seconds (hours + minutes + seconds combined).
-
-        Used for CUT_LAST and CUT_FIRST modes to specify how much to remove.
-        Example: cut_hours=0, cut_minutes=5, cut_seconds=30 = 330 seconds to remove
-        """
         return (self.cut_hours * 3600) + (self.cut_minutes * 60) + self.cut_seconds
 
     @property
-    def cut_start_total_seconds(self) -> float:
-        """
-        Total start time in seconds for CUT_RANGE mode (hours + minutes + seconds).
+    def cut_start_total_seconds_trim(self) -> float:
+        return (
+            (self.cut_start_hours * 3600)
+            + (self.cut_start_minutes * 60)
+            + self.cut_start_seconds
+        )
 
-        This is the ABSOLUTE timestamp where the output video should START.
-        Example: cut_start_hours=0, cut_start_minutes=2, cut_start_seconds=30
-        means start the output video at the 2:30 mark of the input video.
-        """
-        return (self.cut_start_hours * 3600) + (self.cut_start_minutes * 60) + self.cut_start_seconds
+    @property
+    def cut_end_total_seconds_trim(self) -> float:
+        return (
+            (self.cut_end_hours_amount or 0.0) * 3600
+            + (self.cut_end_minutes_amount or 0.0) * 60
+            + (self.cut_end_seconds_amount or 0.0)
+        )
+
+    @property
+    def cut_start_total_seconds(self) -> float:
+        return (
+            (self.cut_start_hours_range * 3600)
+            + (self.cut_start_minutes_range * 60)
+            + self.cut_start_seconds_range
+        )
 
     @property
     def cut_end_total_seconds(self) -> Optional[float]:
-        """
-        Total end time in seconds for CUT_RANGE mode (hours + minutes + seconds).
-
-        This is the ABSOLUTE timestamp where the output video should END.
-        If all end fields are None, the video continues to the end of the input.
-        Example: cut_end_hours=0, cut_end_minutes=5, cut_end_seconds=0
-        means end the output video at the 5:00 mark of the input video.
-
-        Returns None if no end time is specified (meaning "to end of video").
-        """
-        if self.cut_end_hours is None and self.cut_end_minutes is None and self.cut_end_seconds is None:
+        if (
+            self.cut_end_hours is None
+            and self.cut_end_minutes is None
+            and self.cut_end_seconds is None
+        ):
             return None
         hours = self.cut_end_hours or 0.0
         mins = self.cut_end_minutes or 0.0
         secs = self.cut_end_seconds or 0.0
         return (hours * 3600) + (mins * 60) + secs
-
-

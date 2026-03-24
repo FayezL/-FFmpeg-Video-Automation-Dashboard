@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MagicTVBox - FFmpeg Video Automation Dashboard
+VideoForge - FFmpeg Video Automation Dashboard
 Python Desktop Application
 """
 
@@ -97,12 +97,12 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 
-class MagicTVBoxApp:
+class VideoForgeApp:
     """Main application class"""
 
     def __init__(self):
         self.root = ctk.CTk()
-        self.root.title("MagicTVBox - FFmpeg Video Automation")
+        self.root.title("VideoForge - FFmpeg Video Automation")
         self.root.geometry("1400x900")
         self.root.minsize(1000, 700)
 
@@ -190,7 +190,7 @@ class MagicTVBoxApp:
         header.pack(fill="x", padx=20, pady=20)
 
         title = ctk.CTkLabel(
-            header, text="MagicTVBox", font=ctk.CTkFont(size=24, weight="bold")
+            header, text="VideoForge", font=ctk.CTkFont(size=24, weight="bold")
         )
         title.pack(anchor="w")
 
@@ -285,8 +285,8 @@ def main():
         root = tk.Tk()
         root.withdraw()
         messagebox.showwarning(
-            "MagicTVBox Already Running",
-            "Another instance of MagicTVBox is already running.\n\n"
+            "VideoForge Already Running",
+            "Another instance of VideoForge is already running.\n\n"
             "Please use the existing window or close it first.",
         )
         root.destroy()
@@ -315,15 +315,14 @@ def main():
             sys.exit(0)
 
     # Start the application
-    app = MagicTVBoxApp()
+    app = VideoForgeApp()
     app.run()
 
-    # Cleanup lock file on exit
     global _lock_file
     if _lock_file:
         try:
             _lock_file.close()
-            lock_path = Path(tempfile.gettempdir()) / "MagicTVBox.lock"
+            lock_path = Path(tempfile.gettempdir()) / "VideoForge.lock"
             if lock_path.exists():
                 lock_path.unlink()
         except:

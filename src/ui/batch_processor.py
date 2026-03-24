@@ -222,187 +222,120 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         self.pattern_entry.insert(0, "*")
 
     def _create_trim_section(self):
-        """Trim/Cut options section"""
         trim_frame = ctk.CTkFrame(self, fg_color="#0f172a", corner_radius=12)
         trim_frame.pack(fill="x", pady=(0, 12))
 
         section_header = ctk.CTkFrame(trim_frame, fg_color="transparent")
-        section_header.pack(fill="x", padx=16, pady=(16, 12))
+        section_header.pack(fill="x", padx=16, pady=(16, 8))
 
         ctk.CTkLabel(
             section_header,
-            text="✀  Trim / Cut Options",
+            text="✀  Trim Options",
             font=ctk.CTkFont(size=16, weight="bold"),
         ).pack(anchor="w")
 
+        hint_label = ctk.CTkLabel(
+            section_header,
+            text="Works on any video length - no need to know exact duration",
+            font=ctk.CTkFont(size=11),
+            text_color="#64748B",
+        )
+        hint_label.pack(anchor="w", pady=(2, 0))
+
         content = ctk.CTkFrame(trim_frame, fg_color="transparent")
-        content.pack(fill="x", padx=16, pady=(0, 16))
+        content.pack(fill="x", padx=16, pady=(8, 16))
 
-        # Mode selector
-        mode_row = ctk.CTkFrame(content, fg_color="transparent")
-        mode_row.pack(fill="x", pady=(0, 12))
-
-        ctk.CTkLabel(mode_row, text="Mode:", font=ctk.CTkFont(size=13), width=100).pack(
-            side="left", padx=(0, 12)
+        row1 = ctk.CTkFrame(content, fg_color="transparent")
+        row1.pack(fill="x", pady=6)
+        self.cut_start_enabled_cb = ctk.CTkCheckBox(
+            row1,
+            text="Remove from START (skip intro):",
+            font=ctk.CTkFont(size=13),
+            command=self._on_trim_change,
         )
+        self.cut_start_enabled_cb.pack(side="left")
+        if self.state.cut_start_enabled:
+            self.cut_start_enabled_cb.select()
 
-        self.cut_mode_var = ctk.StringVar(value="cut_last")
-        modes = [
-            ("none", "No trim"),
-            ("cut_last", "Cut last X min"),
-            ("cut_first", "Cut first X min"),
-            ("cut_range", "Cut range (start→end)"),
-        ]
-        mode_btns = ctk.CTkFrame(mode_row, fg_color="transparent")
-        mode_btns.pack(side="left")
-        for val, label in modes:
-            rb = ctk.CTkRadioButton(
-                mode_btns,
-                text=label,
-                variable=self.cut_mode_var,
-                value=val,
-                command=self._on_cut_mode_change,
-                font=ctk.CTkFont(size=12),
-            )
-            rb.pack(side="left", padx=(0, 16))
-
-        # Cut parameters row
-        self.cut_params_row = ctk.CTkFrame(content, fg_color="transparent")
-        self.cut_params_row.pack(fill="x", pady=(8, 0))
-
-        # Cut last/first minutes
-        self.cut_minutes_frame = ctk.CTkFrame(
-            self.cut_params_row, fg_color="transparent"
-        )
-        self.cut_minutes_frame.pack(side="left", padx=(100, 0))
-
-        # Hours
+        self.cut_start_hours_entry = ctk.CTkEntry(row1, width=50, height=28)
+        self.cut_start_hours_entry.insert(0, str(int(self.state.cut_start_hours)))
+        self.cut_start_hours_entry.pack(side="left", padx=(8, 2))
         ctk.CTkLabel(
-            self.cut_minutes_frame,
-            text="Hours:",
-            font=ctk.CTkFont(size=12),
-            text_color="#60a5fa",
-        ).pack(side="left", padx=(0, 8))
-
-        self.cut_hours_entry = ctk.CTkEntry(self.cut_minutes_frame, width=60, height=28)
-        self.cut_hours_entry.pack(side="left", padx=(0, 8))
-        self.cut_hours_entry.insert(0, "0")
-
-        # Minutes
-        ctk.CTkLabel(
-            self.cut_minutes_frame,
-            text="Minutes:",
-            font=ctk.CTkFont(size=12),
-            text_color="#60a5fa",
-        ).pack(side="left", padx=(0, 8))
-
-        self.cut_minutes_entry = ctk.CTkEntry(
-            self.cut_minutes_frame, width=60, height=28
-        )
-        self.cut_minutes_entry.pack(side="left", padx=(0, 8))
-        self.cut_minutes_entry.insert(0, "5")
-
-        # Seconds
-        ctk.CTkLabel(
-            self.cut_minutes_frame,
-            text="Seconds:",
-            font=ctk.CTkFont(size=12),
-            text_color="#60a5fa",
-        ).pack(side="left", padx=(0, 8))
-
-        self.cut_seconds_entry = ctk.CTkEntry(
-            self.cut_minutes_frame, width=60, height=28
-        )
-        self.cut_seconds_entry.pack(side="left")
-        self.cut_seconds_entry.insert(0, "0")
-
-        # Cut range (start, end)
-        self.cut_range_frame = ctk.CTkFrame(self.cut_params_row, fg_color="transparent")
-        self.cut_range_frame.pack(side="left", padx=(100, 0))
-
-        # Start time
-        ctk.CTkLabel(
-            self.cut_range_frame,
-            text="Start:",
-            font=ctk.CTkFont(size=12, weight="bold"),
-            text_color="#60a5fa",
+            row1, text="h", font=ctk.CTkFont(size=11), text_color="#64748B"
         ).pack(side="left", padx=(0, 6))
 
-        self.cut_start_hours_entry = ctk.CTkEntry(
-            self.cut_range_frame, width=45, height=28
-        )
-        self.cut_start_hours_entry.pack(side="left", padx=(0, 2))
-        self.cut_start_hours_entry.insert(0, "0")
+        self.cut_start_minutes_entry = ctk.CTkEntry(row1, width=50, height=28)
+        self.cut_start_minutes_entry.insert(0, str(int(self.state.cut_start_minutes)))
+        self.cut_start_minutes_entry.pack(side="left", padx=(0, 2))
         ctk.CTkLabel(
-            self.cut_range_frame,
-            text="h",
-            font=ctk.CTkFont(size=11),
-            text_color="#64748B",
+            row1, text="m", font=ctk.CTkFont(size=11), text_color="#64748B"
         ).pack(side="left", padx=(0, 6))
 
-        self.cut_start_entry = ctk.CTkEntry(self.cut_range_frame, width=45, height=28)
-        self.cut_start_entry.pack(side="left", padx=(0, 2))
-        self.cut_start_entry.insert(0, "0")
+        self.cut_start_seconds_entry = ctk.CTkEntry(row1, width=50, height=28)
+        self.cut_start_seconds_entry.insert(0, str(int(self.state.cut_start_seconds)))
+        self.cut_start_seconds_entry.pack(side="left", padx=(0, 2))
         ctk.CTkLabel(
-            self.cut_range_frame,
-            text="m",
-            font=ctk.CTkFont(size=11),
-            text_color="#64748B",
-        ).pack(side="left", padx=(0, 6))
-
-        self.cut_start_sec_entry = ctk.CTkEntry(
-            self.cut_range_frame, width=45, height=28
-        )
-        self.cut_start_sec_entry.pack(side="left", padx=(0, 2))
-        self.cut_start_sec_entry.insert(0, "0")
-        ctk.CTkLabel(
-            self.cut_range_frame,
-            text="s",
-            font=ctk.CTkFont(size=11),
-            text_color="#64748B",
-        ).pack(side="left", padx=(0, 16))
-
-        # End time
-        ctk.CTkLabel(
-            self.cut_range_frame,
-            text="End:",
-            font=ctk.CTkFont(size=12, weight="bold"),
-            text_color="#60a5fa",
-        ).pack(side="left", padx=(0, 6))
-
-        self.cut_end_hours_entry = ctk.CTkEntry(
-            self.cut_range_frame, width=45, height=28
-        )
-        self.cut_end_hours_entry.pack(side="left", padx=(0, 2))
-        self.cut_end_hours_entry.insert(0, "")
-        ctk.CTkLabel(
-            self.cut_range_frame,
-            text="h",
-            font=ctk.CTkFont(size=11),
-            text_color="#64748B",
-        ).pack(side="left", padx=(0, 6))
-
-        self.cut_end_entry = ctk.CTkEntry(self.cut_range_frame, width=45, height=28)
-        self.cut_end_entry.pack(side="left", padx=(0, 2))
-        self.cut_end_entry.insert(0, "")
-        ctk.CTkLabel(
-            self.cut_range_frame,
-            text="m",
-            font=ctk.CTkFont(size=11),
-            text_color="#64748B",
-        ).pack(side="left", padx=(0, 6))
-
-        self.cut_end_sec_entry = ctk.CTkEntry(self.cut_range_frame, width=45, height=28)
-        self.cut_end_sec_entry.pack(side="left", padx=(0, 2))
-        self.cut_end_sec_entry.insert(0, "")
-        ctk.CTkLabel(
-            self.cut_range_frame,
-            text="s",
-            font=ctk.CTkFont(size=11),
-            text_color="#64748B",
+            row1, text="s", font=ctk.CTkFont(size=11), text_color="#64748B"
         ).pack(side="left")
 
-        self._on_cut_mode_change()
+        row2 = ctk.CTkFrame(content, fg_color="transparent")
+        row2.pack(fill="x", pady=6)
+        self.cut_end_enabled_cb = ctk.CTkCheckBox(
+            row2,
+            text="Remove from END (cut outro):",
+            font=ctk.CTkFont(size=13),
+            command=self._on_trim_change,
+        )
+        self.cut_end_enabled_cb.pack(side="left")
+        if self.state.cut_end_enabled:
+            self.cut_end_enabled_cb.select()
+
+        self.cut_end_hours_entry = ctk.CTkEntry(row2, width=50, height=28)
+        self.cut_end_hours_entry.insert(
+            0, str(int(self.state.cut_end_hours_amount or 0))
+        )
+        self.cut_end_hours_entry.pack(side="left", padx=(8, 2))
+        ctk.CTkLabel(
+            row2, text="h", font=ctk.CTkFont(size=11), text_color="#64748B"
+        ).pack(side="left", padx=(0, 6))
+
+        self.cut_end_minutes_entry = ctk.CTkEntry(row2, width=50, height=28)
+        self.cut_end_minutes_entry.insert(
+            0, str(int(self.state.cut_end_minutes_amount or 0))
+        )
+        self.cut_end_minutes_entry.pack(side="left", padx=(0, 2))
+        ctk.CTkLabel(
+            row2, text="m", font=ctk.CTkFont(size=11), text_color="#64748B"
+        ).pack(side="left", padx=(0, 6))
+
+        self.cut_end_seconds_entry = ctk.CTkEntry(row2, width=50, height=28)
+        self.cut_end_seconds_entry.insert(
+            0, str(int(self.state.cut_end_seconds_amount or 0))
+        )
+        self.cut_end_seconds_entry.pack(side="left", padx=(0, 2))
+        ctk.CTkLabel(
+            row2, text="s", font=ctk.CTkFont(size=11), text_color="#64748B"
+        ).pack(side="left")
+
+        self.cut_mode_var = ctk.StringVar(value="cut_last")
+        self.cut_hours_entry = self.cut_end_hours_entry
+        self.cut_minutes_entry = self.cut_end_minutes_entry
+        self.cut_seconds_entry = self.cut_end_seconds_entry
+        self.cut_start_entry = self.cut_start_minutes_entry
+        self.cut_start_sec_entry = self.cut_start_seconds_entry
+        self.cut_end_entry = self.cut_end_minutes_entry
+        self.cut_end_sec_entry = self.cut_end_seconds_entry
+        self.cut_start_hours = self.cut_start_hours_entry
+        self.cut_first_hours = self.cut_start_hours_entry
+        self.cut_first_minutes = self.cut_start_minutes_entry
+        self.cut_first_seconds = self.cut_start_seconds_entry
+        self.cut_last_hours = self.cut_end_hours_entry
+        self.cut_last_minutes = self.cut_end_minutes_entry
+        self.cut_last_seconds = self.cut_end_seconds_entry
+
+    def _on_trim_change(self):
+        self.state.cut_start_enabled = self.cut_start_enabled_cb.get() == 1
+        self.state.cut_end_enabled = self.cut_end_enabled_cb.get() == 1
 
     def _create_profile_section(self):
         """Processing profile/quality section"""
@@ -1192,17 +1125,8 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             ).pack(anchor="w", padx=12, pady=(0, 8), fill="x")
 
     def _on_cut_mode_change(self):
-        """Show/hide cut parameter fields based on mode"""
         mode = self.cut_mode_var.get()
         self.state.cut_mode = CutMode(mode)
-
-        self.cut_minutes_frame.pack_forget()
-        self.cut_range_frame.pack_forget()
-
-        if mode == "cut_last" or mode == "cut_first":
-            self.cut_minutes_frame.pack(side="left", padx=(100, 0))
-        elif mode == "cut_range":
-            self.cut_range_frame.pack(side="left", padx=(100, 0))
 
     def _on_delogo_toggle(self):
         """Toggle delogo section visibility"""
@@ -1581,60 +1505,53 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         self.state.processing_profile = value
         self.profile_desc_label.configure(text=PROCESSING_PROFILES[value].description)
 
+    def _on_cut_mode_change(self):
+        pass
+
     def _sync_state_from_ui(self):
-        """Sync cut/trim and output options from UI to state"""
-        self.state.cut_mode = CutMode(self.cut_mode_var.get())
+        self.state.cut_start_enabled = self.cut_start_enabled_cb.get() == 1
+        self.state.cut_end_enabled = self.cut_end_enabled_cb.get() == 1
 
-        # For CUT_LAST and CUT_FIRST modes
-        try:
-            self.state.cut_hours = float(self.cut_hours_entry.get() or "0")
-        except ValueError:
-            self.state.cut_hours = 0.0
-        try:
-            self.state.cut_minutes = float(self.cut_minutes_entry.get() or "0")
-        except ValueError:
-            self.state.cut_minutes = 0.0
-        try:
-            self.state.cut_seconds = float(self.cut_seconds_entry.get() or "0")
-        except ValueError:
-            self.state.cut_seconds = 0.0
-
-        # For CUT_RANGE mode - Start time
         try:
             self.state.cut_start_hours = float(self.cut_start_hours_entry.get() or "0")
         except ValueError:
             self.state.cut_start_hours = 0.0
         try:
-            self.state.cut_start_minutes = float(self.cut_start_entry.get() or "0")
+            self.state.cut_start_minutes = float(
+                self.cut_start_minutes_entry.get() or "0"
+            )
         except ValueError:
             self.state.cut_start_minutes = 0.0
         try:
-            self.state.cut_start_seconds = float(self.cut_start_sec_entry.get() or "0")
+            self.state.cut_start_seconds = float(
+                self.cut_start_seconds_entry.get() or "0"
+            )
         except ValueError:
             self.state.cut_start_seconds = 0.0
 
-        # For CUT_RANGE mode - End time
         try:
-            end_hours = self.cut_end_hours_entry.get().strip()
-            self.state.cut_end_hours = float(end_hours) if end_hours else None
+            self.state.cut_end_hours_amount = float(
+                self.cut_end_hours_entry.get() or "0"
+            )
         except ValueError:
-            self.state.cut_end_hours = None
+            self.state.cut_end_hours_amount = 0.0
         try:
-            end = self.cut_end_entry.get().strip()
-            self.state.cut_end_minutes = float(end) if end else None
+            self.state.cut_end_minutes_amount = float(
+                self.cut_end_minutes_entry.get() or "0"
+            )
         except ValueError:
-            self.state.cut_end_minutes = None
+            self.state.cut_end_minutes_amount = 0.0
         try:
-            end_sec = self.cut_end_sec_entry.get().strip()
-            self.state.cut_end_seconds = float(end_sec) if end_sec else None
+            self.state.cut_end_seconds_amount = float(
+                self.cut_end_seconds_entry.get() or "0"
+            )
         except ValueError:
-            self.state.cut_end_seconds = None
+            self.state.cut_end_seconds_amount = 0.0
 
         self.state.output_format = self.format_var.get()
         self.state.output_prefix = self.prefix_entry.get()
         self.state.output_suffix = self.suffix_entry.get()
 
-        # Rename Plan fields
         self.state.rename_enabled = self.rename_checkbox.get() == 1
         self.state.rename_base = self.rename_base_entry.get().strip()
         try:

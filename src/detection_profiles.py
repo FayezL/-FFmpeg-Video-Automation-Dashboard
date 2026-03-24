@@ -22,7 +22,7 @@ def get_profiles_dir() -> Path:
     else:  # macOS/Linux
         base_dir = Path.home() / ".config"
 
-    profiles_dir = base_dir / "MagicTVBox" / "profiles"
+    profiles_dir = base_dir / "VideoForge" / "profiles"
     profiles_dir.mkdir(parents=True, exist_ok=True)
     return profiles_dir
 
