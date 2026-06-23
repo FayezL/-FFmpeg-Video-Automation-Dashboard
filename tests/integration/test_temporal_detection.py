@@ -52,6 +52,28 @@ def _make_test_video(path: Path, seconds: int = 4, fps: int = 30) -> None:
     subprocess.run(cmd, check=True, capture_output=True)
 
 
+def _make_compressed_test_video(path: Path, seconds: int = 6, fps: int = 30) -> None:
+    """Like _make_test_video but with TYPICAL H.264 compression (CRF 23).
+
+    Real-world video has quantization noise that raises the variance of even
+    perfectly-static logo pixels. This fixture simulates that real-world
+    condition. The default temporal_variance_threshold (5.0) must be high
+    enough to absorb this noise.
+    """
+    cmd = [
+        "ffmpeg", "-y",
+        "-f", "lavfi",
+        "-i", f"mandelbrot=size=640x480:rate={fps}:maxiter=80",
+        "-t", str(seconds),
+        "-vf", "drawbox=x=560:y=20:w=60:h=50:color=black@1.0:t=fill",
+        "-c:v", "libx264",
+        "-crf", "23",
+        "-pix_fmt", "yuv420p",
+        str(path),
+    ]
+    subprocess.run(cmd, check=True, capture_output=True)
+
+
 @pytest.fixture(scope="module")
 def test_video(tmp_path_factory) -> Path:
     if not _ffmpeg_available():
@@ -118,3 +140,48 @@ def test_cancel_check_aborts_midway(test_video):
     detector = TemporalLogoDetector(config)
     with pytest.raises(DetectionCancelledError):
         detector.detect_in_video(str(test_video), cancel_check=always_cancel)
+
+
+# ─── Compressed-video tests (real-world simulation) ───────────────────────
+
+
+@pytest.fixture(scope="module")
+def compressed_test_video(tmp_path_factory) -> Path:
+    """A test video with typical H.264 compression (CRF 23), not lossless."""
+    if not _ffmpeg_available():
+        pytest.skip("ffmpeg not available on PATH")
+    video_path = tmp_path_factory.mktemp("videos") / "compressed_logo.mp4"
+    _make_compressed_test_video(video_path)
+    return video_path
+
+
+def test_detects_logo_in_compressed_video(compressed_test_video):
+    """The detector MUST find a static opaque logo in real-world compressed video.
+
+    This is the key regression test: the old default threshold (0.005) was
+    calibrated for lossless video and failed on any H.264-compressed input.
+    The new default (5.0) absorbs quantization noise while still rejecting
+    genuinely dynamic regions.
+    """
+    config = DetectionConfig()  # all defaults — must work out of the box
+    config.temporal_num_frames = 15
+    config.position_zones = ["top-right"]
+    config.min_logo_width = 20
+    config.min_logo_height = 20
+    config.max_logo_width = 200
+    config.max_logo_height = 200
+    config.temporal_min_region_pixels = 100
+
+    detector = TemporalLogoDetector(config)
+    session = detector.detect_in_video(str(compressed_test_video))
+
+    assert session.status == "completed"
+    assert len(session.results) >= 1, (
+        "Detector found NO logos in compressed video — threshold is too strict"
+    )
+
+    top = session.results[0]
+    # The drawn rectangle is at (560, 20, 60, 50) → top-right corner.
+    assert top.x + top.width >= 550
+    assert top.y <= 100
+    assert top.confidence >= 0.35

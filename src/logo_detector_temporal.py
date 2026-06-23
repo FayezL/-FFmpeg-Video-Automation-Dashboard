@@ -187,6 +187,7 @@ class TemporalLogoDetector:
         min_h: int,
         max_w: int,
         max_h: int,
+        variance_scale: float = 1.0,
     ) -> float:
         """Score a candidate rectangle: blend of stability, corner fit, and size fit.
 
@@ -195,16 +196,23 @@ class TemporalLogoDetector:
           - Corner fit 20%: how close the box center is to its nearest enabled zone corner.
           - Size fit   10%: how close the box dimensions are to the midpoint of the allowed range.
 
+        Args:
+            variance_scale: The effective variance threshold used for the mask.
+                Stability is normalized by this value so that a candidate at the
+                threshold boundary gets stability ≈ 0, and a candidate with zero
+                variance gets stability = 1.0.
+
         Returns:
             Float score in [0.0, 1.0]. Higher is better.
         """
         # --- Stability (70%) ---
         roi = variance_map[rect.y:rect.y + rect.h, rect.x:rect.x + rect.w]
         mean_var = float(np.mean(roi)) if roi.size > 0 else 1.0
-        # Map variance [0, 0.01] → stability [1.0, 0.0].
+        # Map variance [0, variance_scale] → stability [1.0, 0.0].
         # Variance of 0 = perfectly static = stability 1.0.
-        # Variance >= 0.01 = very unstable = stability 0.0.
-        stability = max(0.0, 1.0 - mean_var / 0.01)
+        # Variance >= variance_scale = at threshold boundary = stability 0.0.
+        scale = max(variance_scale, 0.001)  # avoid division by zero
+        stability = max(0.0, 1.0 - mean_var / scale)
 
         # --- Corner fit (20%) ---
         corner_fit = TemporalLogoDetector._corner_fit_score(
@@ -401,6 +409,12 @@ class TemporalLogoDetector:
         mask = self._cleanup_mask(mask, min_region_pixels=cfg.temporal_min_region_pixels)
         raw_candidates = self._find_candidates(mask)
 
+        # Effective threshold used for the mask — also used to normalize the
+        # stability score so the two are consistent.
+        effective_threshold = cfg.temporal_variance_threshold * (
+            0.1 + 0.9 * float(cfg.sensitivity)
+        )
+
         scored: List[Tuple[float, Rect]] = []
         for rect in raw_candidates:
             if not passes_size_filter(
@@ -424,6 +438,7 @@ class TemporalLogoDetector:
                 position_zones=cfg.position_zones,
                 min_w=cfg.min_logo_width, min_h=cfg.min_logo_height,
                 max_w=cfg.max_logo_width, max_h=cfg.max_logo_height,
+                variance_scale=effective_threshold,
             )
             scored.append((score, rect))
 

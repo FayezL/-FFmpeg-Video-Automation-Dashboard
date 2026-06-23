@@ -111,8 +111,11 @@ class DetectionConfig:
     # Number of evenly-spaced frames to sample across the video for variance analysis.
     temporal_num_frames: int = 15
     # Pixels with per-pixel variance below this value are considered "static" (part of a logo).
-    # Range 0.0 - 1.0 (grayscale intensity variance). Lower threshold = stricter (fewer candidates).
-    temporal_variance_threshold: float = 0.005
+    # Grayscale intensity variance (0-255 scale). Lower threshold = stricter (fewer candidates).
+    # Default 5.0 is calibrated for real-world H.264 compressed video where static regions
+    # have variance ~0.1-1.0 due to quantization noise. (The old default of 0.005 only worked
+    # for near-lossless video.)
+    temporal_variance_threshold: float = 5.0
     # Skip the first/last X fraction of the video to avoid intro/outro fades and black buffers.
     temporal_skip_intro_frac: float = 0.02
     temporal_skip_outro_frac: float = 0.02
@@ -136,7 +139,7 @@ class DetectionConfig:
         assert 0.0 <= self.merge_overlap_threshold <= 1.0, "merge threshold must be 0-1"
         assert 0.0 <= self.min_confidence_to_report <= 1.0, "min_confidence_to_report must be 0-1"
         assert 3 <= self.temporal_num_frames <= 60, "temporal_num_frames must be 3-60"
-        assert 0.0 <= self.temporal_variance_threshold <= 1.0, "temporal_variance_threshold must be 0-1"
+        assert 0.0 <= self.temporal_variance_threshold <= 10000.0, "temporal_variance_threshold must be 0-10000"
         assert 0.0 <= self.temporal_skip_intro_frac < 0.5, "temporal_skip_intro_frac must be 0 to <0.5"
         assert 0.0 <= self.temporal_skip_outro_frac < 0.5, "temporal_skip_outro_frac must be 0 to <0.5"
         assert self.temporal_min_region_pixels > 0, "temporal_min_region_pixels must be > 0"
