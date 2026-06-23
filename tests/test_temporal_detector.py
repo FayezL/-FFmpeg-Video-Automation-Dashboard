@@ -249,3 +249,55 @@ class TestFindCandidates:
         mask[10:60, 10:60] = 255
         candidates = TemporalLogoDetector._find_candidates(mask)
         assert all(isinstance(c, Rect) for c in candidates)
+
+
+class TestScoreCandidate:
+    """Test the candidate scoring function."""
+
+    def _var_map(self, value: float, shape=(200, 200)) -> np.ndarray:
+        return np.full(shape, value, dtype=np.float32)
+
+    def test_low_variance_scores_higher_than_high_variance(self):
+        low_var = self._var_map(0.0001)   # very stable
+        high_var = self._var_map(0.5)     # very unstable
+
+        rect = Rect(x=0, y=0, w=50, h=50)
+        score_low = TemporalLogoDetector._score_candidate(
+            rect, low_var, video_resolution=(200, 200),
+            position_zones=["top-left"],
+            min_w=20, min_h=20, max_w=450, max_h=220,
+        )
+        score_high = TemporalLogoDetector._score_candidate(
+            rect, high_var, video_resolution=(200, 200),
+            position_zones=["top-left"],
+            min_w=20, min_h=20, max_w=450, max_h=220,
+        )
+        assert score_low > score_high
+
+    def test_corner_position_scores_higher_than_center(self):
+        var_map = self._var_map(0.0001)  # uniform low variance
+
+        corner_rect = Rect(x=0, y=0, w=50, h=50)
+        center_rect = Rect(x=75, y=75, w=50, h=50)  # center of 200x200
+
+        score_corner = TemporalLogoDetector._score_candidate(
+            corner_rect, var_map, video_resolution=(200, 200),
+            position_zones=["top-left"],
+            min_w=20, min_h=20, max_w=450, max_h=220,
+        )
+        score_center = TemporalLogoDetector._score_candidate(
+            center_rect, var_map, video_resolution=(200, 200),
+            position_zones=["top-left"],
+            min_w=20, min_h=20, max_w=450, max_h=220,
+        )
+        assert score_corner > score_center
+
+    def test_score_is_in_zero_to_one(self):
+        var_map = self._var_map(0.0001)
+        rect = Rect(x=0, y=0, w=50, h=50)
+        score = TemporalLogoDetector._score_candidate(
+            rect, var_map, video_resolution=(200, 200),
+            position_zones=["top-left"],
+            min_w=20, min_h=20, max_w=450, max_h=220,
+        )
+        assert 0.0 <= score <= 1.0

@@ -173,6 +173,83 @@ class TemporalLogoDetector:
             candidates.append(Rect(x=int(x), y=int(y), w=int(w), h=int(h)))
         return candidates
 
+    @staticmethod
+    def _score_candidate(
+        rect: Rect,
+        variance_map: np.ndarray,
+        video_resolution,
+        position_zones: List[str],
+        min_w: int,
+        min_h: int,
+        max_w: int,
+        max_h: int,
+    ) -> float:
+        """Score a candidate rectangle: blend of stability, corner fit, and size fit.
+
+        Weights (per spec):
+          - Stability 70% (primary): inverse of mean variance inside the box.
+          - Corner fit 20%: how close the box center is to its nearest enabled zone corner.
+          - Size fit   10%: how close the box dimensions are to the midpoint of the allowed range.
+
+        Returns:
+            Float score in [0.0, 1.0]. Higher is better.
+        """
+        # --- Stability (70%) ---
+        roi = variance_map[rect.y:rect.y + rect.h, rect.x:rect.x + rect.w]
+        mean_var = float(np.mean(roi)) if roi.size > 0 else 1.0
+        # Map variance [0, 0.01] → stability [1.0, 0.0].
+        # Variance of 0 = perfectly static = stability 1.0.
+        # Variance >= 0.01 = very unstable = stability 0.0.
+        stability = max(0.0, 1.0 - mean_var / 0.01)
+
+        # --- Corner fit (20%) ---
+        corner_fit = TemporalLogoDetector._corner_fit_score(
+            rect, video_resolution, position_zones
+        )
+
+        # --- Size fit (10%) ---
+        mid_w = (min_w + max_w) / 2.0
+        mid_h = (min_h + max_h) / 2.0
+        # 1.0 at midpoint, falls off toward the bounds.
+        w_fit = 1.0 - abs(rect.w - mid_w) / max(1.0, (max_w - min_w) / 2.0)
+        h_fit = 1.0 - abs(rect.h - mid_h) / max(1.0, (max_h - min_h) / 2.0)
+        size_fit = max(0.0, (w_fit + h_fit) / 2.0)
+
+        score = 0.70 * stability + 0.20 * corner_fit + 0.10 * size_fit
+        return max(0.0, min(1.0, score))
+
+    @staticmethod
+    def _corner_fit_score(
+        rect: Rect,
+        video_resolution,
+        position_zones: List[str],
+    ) -> float:
+        """Return 1.0 if the rect center is at a zone corner, falling to 0.0 at frame center."""
+        if not position_zones:
+            return 0.5  # neutral when position filtering disabled
+        vw, vh = video_resolution
+        cx = rect.x + rect.w / 2.0
+        cy = rect.y + rect.h / 2.0
+
+        best = 0.0
+        for zone in position_zones:
+            if zone == "top-left":
+                corner_x, corner_y = 0.0, 0.0
+            elif zone == "top-right":
+                corner_x, corner_y = vw, 0.0
+            elif zone == "bottom-left":
+                corner_x, corner_y = 0.0, vh
+            elif zone == "bottom-right":
+                corner_x, corner_y = vw, vh
+            else:
+                continue
+            # Normalized distance from corner (0 = at corner, 1 = opposite corner)
+            dist = ((cx - corner_x) ** 2 + (cy - corner_y) ** 2) ** 0.5
+            max_dist = (vw ** 2 + vh ** 2) ** 0.5
+            score = max(0.0, 1.0 - dist / max_dist)
+            best = max(best, score)
+        return best
+
     def detect_in_video(
         self,
         video_path: str,
