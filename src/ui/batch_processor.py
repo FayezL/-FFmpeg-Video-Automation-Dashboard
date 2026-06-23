@@ -11,7 +11,7 @@ import threading
 import os
 import glob
 
-from src.state import AppState, ProcessingFile, FileStatus, CutMode
+from src.state import AppState, ProcessingFile, FileStatus, CutMode, CutUnit
 from src.video_processor import VideoProcessor
 from src.ui.drag_drop import DragDropHandler
 from src.logo_detector import LogoDetector
@@ -246,7 +246,28 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         content = ctk.CTkFrame(trim_frame, fg_color="transparent")
         content.pack(fill="x", padx=16, pady=(8, 16))
 
-        row1 = ctk.CTkFrame(content, fg_color="transparent")
+        # --- Unit selector row (TIME / PERCENT / FRAMES) ---
+        unit_row = ctk.CTkFrame(content, fg_color="transparent")
+        unit_row.pack(fill="x", pady=(0, 6))
+        ctk.CTkLabel(
+            unit_row, text="Unit:", font=ctk.CTkFont(size=13), text_color="#60a5fa"
+        ).pack(side="left", padx=(0, 8))
+        self.cut_unit_var = ctk.StringVar(value=self.state.cut_unit.value)
+        self.cut_unit_menu = ctk.CTkOptionMenu(
+            unit_row,
+            values=["time", "percent", "frames"],
+            variable=self.cut_unit_var,
+            command=self._on_cut_unit_change,
+            width=120,
+            height=28,
+        )
+        self.cut_unit_menu.pack(side="left")
+
+        # --- TIME inputs (existing, shown when unit=time) ---
+        self._time_rows_frame = ctk.CTkFrame(content, fg_color="transparent")
+        self._time_rows_frame.pack(fill="x")
+
+        row1 = ctk.CTkFrame(self._time_rows_frame, fg_color="transparent")
         row1.pack(fill="x", pady=6)
         self.cut_start_enabled_cb = ctk.CTkCheckBox(
             row1,
@@ -279,7 +300,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             row1, text="s", font=ctk.CTkFont(size=11), text_color="#64748B"
         ).pack(side="left")
 
-        row2 = ctk.CTkFrame(content, fg_color="transparent")
+        row2 = ctk.CTkFrame(self._time_rows_frame, fg_color="transparent")
         row2.pack(fill="x", pady=6)
         self.cut_end_enabled_cb = ctk.CTkCheckBox(
             row2,
@@ -333,6 +354,130 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         self.cut_last_hours = self.cut_end_hours_entry
         self.cut_last_minutes = self.cut_end_minutes_entry
         self.cut_last_seconds = self.cut_end_seconds_entry
+
+        # --- PERCENT inputs (shown when unit=percent) ---
+        self._percent_rows_frame = ctk.CTkFrame(content, fg_color="transparent")
+
+        pct_start_row = ctk.CTkFrame(self._percent_rows_frame, fg_color="transparent")
+        pct_start_row.pack(fill="x", pady=6)
+        self.pct_start_enabled_cb = ctk.CTkCheckBox(
+            pct_start_row,
+            text="Remove from START (skip intro):",
+            font=ctk.CTkFont(size=13),
+            command=self._on_percent_trim_change,
+        )
+        self.pct_start_enabled_cb.pack(side="left")
+        self.pct_start_entry = ctk.CTkEntry(pct_start_row, width=60, height=28)
+        self.pct_start_entry.insert(0, str(self.state.cut_start_percent))
+        self.pct_start_entry.pack(side="left", padx=(8, 2))
+        ctk.CTkLabel(
+            pct_start_row, text="%", font=ctk.CTkFont(size=11), text_color="#64748B"
+        ).pack(side="left")
+
+        pct_end_row = ctk.CTkFrame(self._percent_rows_frame, fg_color="transparent")
+        pct_end_row.pack(fill="x", pady=6)
+        self.pct_end_enabled_cb = ctk.CTkCheckBox(
+            pct_end_row,
+            text="Remove from END (cut outro):",
+            font=ctk.CTkFont(size=13),
+            command=self._on_percent_trim_change,
+        )
+        self.pct_end_enabled_cb.pack(side="left")
+        if self.state.cut_end_enabled:
+            self.pct_end_enabled_cb.select()
+        self.pct_end_entry = ctk.CTkEntry(pct_end_row, width=60, height=28)
+        self.pct_end_entry.insert(0, str(self.state.cut_end_percent or 0))
+        self.pct_end_entry.pack(side="left", padx=(8, 2))
+        ctk.CTkLabel(
+            pct_end_row, text="%", font=ctk.CTkFont(size=11), text_color="#64748B"
+        ).pack(side="left")
+
+        # --- FRAMES inputs (shown when unit=frames) ---
+        self._frame_rows_frame = ctk.CTkFrame(content, fg_color="transparent")
+
+        frm_start_row = ctk.CTkFrame(self._frame_rows_frame, fg_color="transparent")
+        frm_start_row.pack(fill="x", pady=6)
+        self.frm_start_enabled_cb = ctk.CTkCheckBox(
+            frm_start_row,
+            text="Remove from START (skip intro):",
+            font=ctk.CTkFont(size=13),
+            command=self._on_frame_trim_change,
+        )
+        self.frm_start_enabled_cb.pack(side="left")
+        self.frm_start_entry = ctk.CTkEntry(frm_start_row, width=80, height=28)
+        self.frm_start_entry.insert(0, str(self.state.cut_start_frame))
+        self.frm_start_entry.pack(side="left", padx=(8, 2))
+        ctk.CTkLabel(
+            frm_start_row, text="frames", font=ctk.CTkFont(size=11), text_color="#64748B"
+        ).pack(side="left")
+
+        frm_end_row = ctk.CTkFrame(self._frame_rows_frame, fg_color="transparent")
+        frm_end_row.pack(fill="x", pady=6)
+        self.frm_end_enabled_cb = ctk.CTkCheckBox(
+            frm_end_row,
+            text="Remove from END (cut outro):",
+            font=ctk.CTkFont(size=13),
+            command=self._on_frame_trim_change,
+        )
+        self.frm_end_enabled_cb.pack(side="left")
+        if self.state.cut_end_enabled:
+            self.frm_end_enabled_cb.select()
+        self.frm_end_entry = ctk.CTkEntry(frm_end_row, width=80, height=28)
+        self.frm_end_entry.insert(0, str(self.state.cut_end_frame or 0))
+        self.frm_end_entry.pack(side="left", padx=(8, 2))
+        ctk.CTkLabel(
+            frm_end_row, text="frames", font=ctk.CTkFont(size=11), text_color="#64748B"
+        ).pack(side="left")
+
+        # Sync initial visibility based on the current unit
+        self._sync_unit_visibility()
+
+    def _on_cut_unit_change(self, _value: str = ""):
+        """Handle unit dropdown change — swap visible input rows."""
+        self.state.cut_unit = CutUnit(self.cut_unit_var.get())
+        self._sync_unit_visibility()
+
+    def _sync_unit_visibility(self):
+        """Show/hide time/percent/frame rows based on the selected unit."""
+        unit = self.state.cut_unit
+        if unit == CutUnit.TIME:
+            self._time_rows_frame.pack(fill="x")
+            self._percent_rows_frame.pack_forget()
+            self._frame_rows_frame.pack_forget()
+        elif unit == CutUnit.PERCENT:
+            self._time_rows_frame.pack_forget()
+            self._percent_rows_frame.pack(fill="x")
+            self._frame_rows_frame.pack_forget()
+        elif unit == CutUnit.FRAMES:
+            self._time_rows_frame.pack_forget()
+            self._percent_rows_frame.pack_forget()
+            self._frame_rows_frame.pack(fill="x")
+
+    def _on_percent_trim_change(self):
+        """Sync percent checkboxes and entry values to AppState."""
+        self.state.cut_start_enabled = self.pct_start_enabled_cb.get() == 1
+        self.state.cut_end_enabled = self.pct_end_enabled_cb.get() == 1
+        try:
+            self.state.cut_start_percent = float(self.pct_start_entry.get() or 0)
+        except ValueError:
+            self.state.cut_start_percent = 0.0
+        try:
+            self.state.cut_end_percent = float(self.pct_end_entry.get() or 0)
+        except ValueError:
+            self.state.cut_end_percent = 0.0
+
+    def _on_frame_trim_change(self):
+        """Sync frame checkboxes and entry values to AppState."""
+        self.state.cut_start_enabled = self.frm_start_enabled_cb.get() == 1
+        self.state.cut_end_enabled = self.frm_end_enabled_cb.get() == 1
+        try:
+            self.state.cut_start_frame = int(self.frm_start_entry.get() or 0)
+        except ValueError:
+            self.state.cut_start_frame = 0
+        try:
+            self.state.cut_end_frame = int(self.frm_end_entry.get() or 0)
+        except ValueError:
+            self.state.cut_end_frame = 0
 
     def _on_trim_change(self):
         self.state.cut_start_enabled = self.cut_start_enabled_cb.get() == 1

@@ -196,50 +196,41 @@ class VideoProcessor:
     ) -> Tuple[float, float]:
         """Compute (start_time, end_time) in seconds from the current cut_unit setting.
 
-        Reads state.cut_mode, state.cut_unit, and the percent/frame fields.
-        Used when cut_unit is PERCENT or FRAMES (not TIME).
+        Mirrors the dual-checkbox model used by the TIME path:
+        - cut_start_enabled + cut_start_percent/frame → remove from start
+        - cut_end_enabled + cut_end_percent/frame → remove from end
 
         Returns:
             (start_time, end_time) in seconds.
         """
         unit = self.state.cut_unit
-        mode = self.state.cut_mode
         cfg = self.state
 
-        if mode == CutMode.NONE:
-            return 0.0, total_duration
+        start_time = 0.0
+        end_time = total_duration
 
-        if mode == CutMode.CUT_FIRST:
-            amount = convert_cut_value_to_seconds(
-                cfg.cut_amount_percent if unit == CutUnit.PERCENT else cfg.cut_amount_frames,
-                unit, total_duration, video_fps,
+        if cfg.cut_start_enabled:
+            val = (
+                cfg.cut_start_percent
+                if unit == CutUnit.PERCENT
+                else cfg.cut_start_frame
             )
-            return amount, total_duration
-
-        if mode == CutMode.CUT_LAST:
-            amount = convert_cut_value_to_seconds(
-                cfg.cut_amount_percent if unit == CutUnit.PERCENT else cfg.cut_amount_frames,
-                unit, total_duration, video_fps,
+            start_time = convert_cut_value_to_seconds(
+                val, unit, total_duration, video_fps
             )
-            return 0.0, max(1.0, total_duration - amount)
 
-        # CUT_RANGE
-        start_val = (
-            cfg.cut_start_percent if unit == CutUnit.PERCENT else cfg.cut_start_frame
-        )
-        start_time = convert_cut_value_to_seconds(
-            start_val, unit, total_duration, video_fps
-        )
-
-        end_val = (
-            cfg.cut_end_percent if unit == CutUnit.PERCENT else cfg.cut_end_frame
-        )
-        if end_val is None:
-            end_time = total_duration
-        else:
-            end_time = convert_cut_value_to_seconds(
-                end_val, unit, total_duration, video_fps
+        if cfg.cut_end_enabled:
+            val = (
+                cfg.cut_end_percent
+                if unit == CutUnit.PERCENT
+                else cfg.cut_end_frame
             )
+            if val is not None:
+                amount = convert_cut_value_to_seconds(
+                    val, unit, total_duration, video_fps
+                )
+                end_time = max(1.0, total_duration - amount)
+
         return start_time, end_time
 
     def process_video(
