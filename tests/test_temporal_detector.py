@@ -170,3 +170,46 @@ class TestThresholdVarianceMap:
         mask = TemporalLogoDetector._threshold_variance_map(
             var_map, sensitivity=0.5, base_threshold=0.005)
         assert np.all(mask == 0)
+
+
+class TestCleanupMask:
+    """Test morphological cleanup of the binary mask."""
+
+    def test_removes_tiny_blobs(self):
+        # Mask with one big white rectangle and a few single-pixel noise blobs
+        mask = np.zeros((100, 100), dtype=np.uint8)
+        mask[10:50, 10:50] = 255  # 40x40 = 1600 pixels (keep)
+        mask[0, 0] = 255          # 1 pixel (remove)
+        mask[99, 99] = 255        # 1 pixel (remove)
+        mask[60, 60] = 255        # 1 pixel (remove)
+
+        cleaned = TemporalLogoDetector._cleanup_mask(mask, min_region_pixels=200)
+
+        # Big rectangle survives; isolated pixels are removed
+        assert cleaned[30, 30] == 255  # center of big rect
+        assert cleaned[0, 0] == 0
+        assert cleaned[99, 99] == 0
+        assert cleaned[60, 60] == 0
+
+    def test_merges_nearby_blobs(self):
+        # Two white rectangles close together should merge into one blob
+        mask = np.zeros((100, 100), dtype=np.uint8)
+        mask[10:30, 10:20] = 255  # left blob
+        mask[10:30, 23:33] = 255  # right blob (3px gap)
+
+        cleaned = TemporalLogoDetector._cleanup_mask(mask, min_region_pixels=200)
+
+        # The gap between them should now be filled
+        assert cleaned[20, 21] == 255  # gap closed
+        assert cleaned[20, 11] == 255  # left blob intact
+
+    def test_preserves_large_blob(self):
+        mask = np.zeros((100, 100), dtype=np.uint8)
+        mask[20:60, 20:60] = 255  # 40x40 = 1600 pixels
+        cleaned = TemporalLogoDetector._cleanup_mask(mask, min_region_pixels=200)
+        assert np.count_nonzero(cleaned) >= 1600 - 50  # roughly preserved
+
+    def test_empty_mask_stays_empty(self):
+        mask = np.zeros((100, 100), dtype=np.uint8)
+        cleaned = TemporalLogoDetector._cleanup_mask(mask, min_region_pixels=200)
+        assert np.all(cleaned == 0)

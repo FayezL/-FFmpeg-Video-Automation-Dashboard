@@ -16,7 +16,7 @@ No deep learning, no API calls, no third-party dependencies beyond OpenCV/NumPy.
 from typing import Callable, List, Optional
 from typing import Tuple  # noqa: F401
 
-import cv2  # noqa: F401
+import cv2
 import numpy as np
 
 from src.data_models import DetectionConfig, DetectionResult, DetectionSession  # noqa: F401
@@ -126,6 +126,32 @@ class TemporalLogoDetector:
         effective_threshold = base_threshold * (0.1 + 0.9 * float(sensitivity))
         mask = np.where(variance_map < effective_threshold, 255, 0).astype(np.uint8)
         return mask
+
+    @staticmethod
+    def _cleanup_mask(mask: np.ndarray, min_region_pixels: int) -> np.ndarray:
+        """Clean a binary mask: dilate to merge nearby blobs, then drop tiny ones.
+
+        Args:
+            mask: Binary mask (uint8, 0 or 255).
+            min_region_pixels: Connected components with fewer pixels than this
+                are removed as noise.
+
+        Returns:
+            Cleaned binary mask (uint8, 0 or 255).
+        """
+        # Close small gaps so a fragmented logo merges into one blob.
+        # Kernel size 5 gives a ~5px bridge between nearby regions.
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+        closed = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+
+        # Remove tiny connected components (noise).
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(closed, connectivity=8)
+        cleaned = np.zeros_like(mask)
+        for label_idx in range(1, num_labels):  # 0 = background
+            area = int(stats[label_idx, cv2.CC_STAT_AREA])
+            if area >= min_region_pixels:
+                cleaned[labels == label_idx] = 255
+        return cleaned
 
     def detect_in_video(
         self,
