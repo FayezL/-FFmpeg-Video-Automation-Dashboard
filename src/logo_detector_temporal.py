@@ -17,7 +17,7 @@ from typing import Callable, List, Optional
 from typing import Tuple  # noqa: F401
 
 import cv2  # noqa: F401
-import numpy as np  # noqa: F401
+import numpy as np
 
 from src.data_models import DetectionConfig, DetectionResult, DetectionSession  # noqa: F401
 from src.exceptions import (  # noqa: F401
@@ -77,6 +77,25 @@ class TemporalLogoDetector:
 
         step = (window - 1) / (count - 1)
         return [int(start + round(i * step)) for i in range(count)]
+
+    @staticmethod
+    def _compute_variance_map(frames_stack: np.ndarray) -> np.ndarray:
+        """Compute per-pixel temporal variance across a stack of grayscale frames.
+
+        Args:
+            frames_stack: NumPy array of shape (N, H, W), dtype uint8 (grayscale).
+
+        Returns:
+            np.ndarray of shape (H, W), dtype float32 — per-pixel variance.
+            For an empty stack (N=0), returns zeros of shape (H, W).
+        """
+        if frames_stack.shape[0] == 0:
+            h, w = frames_stack.shape[1], frames_stack.shape[2]
+            return np.zeros((h, w), dtype=np.float32)
+
+        # Convert to float to avoid integer overflow in variance.
+        frames_float = frames_stack.astype(np.float32)
+        return np.var(frames_float, axis=0)
 
     def detect_in_video(
         self,

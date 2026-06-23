@@ -6,6 +6,8 @@ The end-to-end `detect_in_video` test on a real video lives in
 tests/integration/test_temporal_detection.py.
 """
 
+import numpy as np
+
 from src.data_models import DetectionConfig
 from src.logo_detector_temporal import TemporalLogoDetector
 
@@ -77,3 +79,54 @@ class TestSampleFrameIndices:
             skip_intro_frac=0.02, skip_outro_frac=0.02,
         )
         assert indices == []
+
+
+class TestComputeVarianceMap:
+    """Test per-pixel temporal variance computation."""
+
+    def test_identical_frames_have_zero_variance(self):
+        # 10 identical 100x80 frames → variance is 0 everywhere
+        frame = np.random.randint(0, 256, size=(80, 100), dtype=np.uint8)
+        stack = np.stack([frame] * 10)
+        var_map = TemporalLogoDetector._compute_variance_map(stack)
+        assert var_map.shape == (80, 100)
+        assert var_map.dtype == np.float32
+        assert np.all(var_map == 0.0)
+
+    def test_random_frames_have_positive_variance(self):
+        # 10 different random frames → variance > 0 everywhere
+        stack = np.stack([
+            np.random.randint(0, 256, size=(80, 100), dtype=np.uint8)
+            for _ in range(10)
+        ])
+        var_map = TemporalLogoDetector._compute_variance_map(stack)
+        assert np.all(var_map > 0.0)
+
+    def test_static_corner_low_variance_changing_elsewhere(self):
+        # 10 frames: a 20x20 region in the top-right is identical; the rest is random
+        h, w = 80, 100
+        n = 10
+        corner_w, corner_h = 20, 20
+        corner_x, corner_y = w - corner_w, 0  # top-right
+
+        frames = []
+        for _ in range(n):
+            f = np.random.randint(0, 256, size=(h, w), dtype=np.uint8)
+            # Overwrite the corner with a fixed pattern (same across all frames)
+            f[corner_y:corner_y + corner_h, corner_x:corner_x + corner_w] = 128
+            frames.append(f)
+        stack = np.stack(frames)
+
+        var_map = TemporalLogoDetector._compute_variance_map(stack)
+
+        corner_region = var_map[corner_y:corner_y + corner_h, corner_x:corner_x + corner_w]
+        outside_region = var_map[:corner_h, :corner_x]  # top-left area (random)
+
+        assert np.all(corner_region == 0.0)  # static corner has zero variance
+        assert np.all(outside_region > 0.0)  # random area has positive variance
+
+    def test_returns_empty_for_empty_stack(self):
+        empty_stack = np.zeros((0, 80, 100), dtype=np.uint8)
+        var_map = TemporalLogoDetector._compute_variance_map(empty_stack)
+        assert var_map.shape == (80, 100)
+        assert np.all(var_map == 0.0)
