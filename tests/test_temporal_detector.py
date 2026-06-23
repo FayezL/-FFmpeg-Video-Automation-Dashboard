@@ -301,3 +301,111 @@ class TestScoreCandidate:
             min_w=20, min_h=20, max_w=450, max_h=220,
         )
         assert 0.0 <= score <= 1.0
+
+
+class TestDetectFromFrameStack:
+    """End-to-end test of the detection pipeline on synthetic frame stacks.
+
+    These bypass video I/O by calling the package-private entry point that
+    takes a pre-built stack of grayscale frames.
+    """
+
+    def _make_stack_with_corner_logo(self, n=15, h=480, w=640,
+                                     logo_x=580, logo_y=10,
+                                     logo_w=50, logo_h=40) -> np.ndarray:
+        """Build a synthetic frame stack: random noise everywhere except a
+        static rectangle in the top-right corner (the 'logo')."""
+        frames = []
+        for _ in range(n):
+            f = np.random.randint(0, 256, size=(h, w), dtype=np.uint8)
+            f[logo_y:logo_y + logo_h, logo_x:logo_x + logo_w] = 100  # fixed logo
+            frames.append(f)
+        return np.stack(frames)
+
+    def test_finds_static_corner_logo(self):
+        stack = self._make_stack_with_corner_logo()
+        config = DetectionConfig(
+            sensitivity=0.5,
+            position_zones=["top-right"],
+            min_logo_width=10, min_logo_height=10,
+            max_logo_width=200, max_logo_height=200,
+            temporal_min_region_pixels=100,
+        )
+        detector = TemporalLogoDetector(config)
+        results = detector._detect_from_frame_stack(
+            stack, video_resolution=(640, 480),
+        )
+        assert len(results) >= 1
+        top = results[0]
+        # Top result should overlap the known logo rectangle (580, 10, 50, 40)
+        overlap_x = max(0, min(top.x + top.width, 630) - max(top.x, 580))
+        overlap_y = max(0, min(top.y + top.height, 50) - max(top.y, 10))
+        assert overlap_x * overlap_y > 0  # at least some overlap
+
+    def test_no_static_region_returns_empty(self):
+        # Pure random noise — no static regions
+        stack = np.stack([
+            np.random.randint(0, 256, size=(480, 640), dtype=np.uint8)
+            for _ in range(15)
+        ])
+        config = DetectionConfig(
+            sensitivity=0.5,
+            position_zones=["top-right"],
+            min_logo_width=10, min_logo_height=10,
+            max_logo_width=200, max_logo_height=200,
+            temporal_min_region_pixels=100,
+        )
+        detector = TemporalLogoDetector(config)
+        results = detector._detect_from_frame_stack(
+            stack, video_resolution=(640, 480),
+        )
+        assert results == []
+
+    def test_flickering_overlay_is_not_detected(self):
+        # Static logo in the corner + a 'subtitle' bar that only appears in some frames
+        n = 15
+        h, w = 480, 640
+        frames = []
+        for i in range(n):
+            f = np.random.randint(0, 256, size=(h, w), dtype=np.uint8)
+            # Static logo top-right
+            f[10:50, 580:630] = 100
+            # Flickering 'subtitle' at the bottom — visible only every 3rd frame
+            if i % 3 == 0:
+                f[440:470, 100:540] = 200
+            frames.append(f)
+        stack = np.stack(frames)
+
+        config = DetectionConfig(
+            sensitivity=0.5,
+            position_zones=["top-right", "bottom-left", "bottom-right"],
+            min_logo_width=10, min_logo_height=10,
+            max_logo_width=200, max_logo_height=200,
+            temporal_min_region_pixels=100,
+        )
+        detector = TemporalLogoDetector(config)
+        results = detector._detect_from_frame_stack(
+            stack, video_resolution=(w, h),
+        )
+        # The flickering subtitle is NOT static (variance > 0), so we should
+        # only get the corner logo, not the subtitle bar.
+        for r in results:
+            # No result should be in the subtitle region (y around 440-470)
+            assert not (440 <= r.y <= 470), f"False positive on flickering subtitle: {r}"
+
+    def test_results_sorted_by_score_descending(self):
+        stack = self._make_stack_with_corner_logo()
+        config = DetectionConfig(
+            sensitivity=0.5,
+            position_zones=["top-right"],
+            min_logo_width=10, min_logo_height=10,
+            max_logo_width=200, max_logo_height=200,
+            temporal_min_region_pixels=100,
+        )
+        detector = TemporalLogoDetector(config)
+        results = detector._detect_from_frame_stack(
+            stack, video_resolution=(640, 480),
+        )
+        if len(results) >= 2:
+            for i in range(len(results) - 1):
+                assert results[i].confidence >= results[i + 1].confidence

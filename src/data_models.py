@@ -54,7 +54,7 @@ class DetectionResult:
         assert self.height > 0, "height must be > 0"
         assert 0.0 <= self.confidence <= 1.0, "confidence must be 0-1"
         assert self.status in ["pending", "accepted", "rejected"], "invalid status"
-        assert self.detection_method in ["edge", "corner", "template", "vision"], "invalid method"
+        assert self.detection_method in ["edge", "corner", "template", "vision", "temporal"], "invalid method"
         return True
 
     def to_delogo_params(self) -> Tuple[int, int, int, int]:

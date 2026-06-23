@@ -13,19 +13,23 @@ in busy scenes are not stable over time and are therefore rejected.
 No deep learning, no API calls, no third-party dependencies beyond OpenCV/NumPy.
 """
 
-from typing import Callable, List, Optional
-from typing import Tuple  # noqa: F401
+from typing import Callable, List, Optional, Tuple
 
 import cv2
 import numpy as np
 
-from src.data_models import DetectionConfig, DetectionResult, DetectionSession  # noqa: F401
-from src.exceptions import (  # noqa: F401
+from src.data_models import DetectionConfig, DetectionResult, DetectionSession
+from src.exceptions import (
     DetectionCancelledError,
     DetectionFailedError,
     VideoReadError,
 )
-from src.logo_detection_utils import Rect
+from src.logo_detection_utils import (
+    Rect,
+    passes_aspect_ratio_filter,
+    passes_position_filter,
+    passes_size_filter,
+)
 
 
 class TemporalLogoDetector:
@@ -271,4 +275,171 @@ class TemporalLogoDetector:
             DetectionFailedError: If detection fails unexpectedly.
             DetectionCancelledError: If the caller cancels via cancel_check.
         """
-        raise NotImplementedError("Implemented in Task 10")
+        session = DetectionSession(video_path=video_path, config=self.config)
+        cap = None
+        try:
+            cap = cv2.VideoCapture(video_path)
+            if not cap.isOpened():
+                raise VideoReadError(video_path, "Failed to open video file")
+
+            session.video_fps = cap.get(cv2.CAP_PROP_FPS) or 1.0
+            frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            session.video_duration = (
+                frame_count / session.video_fps if session.video_fps > 0 else 0.0
+            )
+            session.video_resolution = (
+                int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+            )
+
+            if progress_callback:
+                progress_callback(0.0, "Sampling frames...")
+
+            indices = self._sample_frame_indices(
+                total_frames=frame_count,
+                num_frames=self.config.temporal_num_frames,
+                skip_intro_frac=self.config.temporal_skip_intro_frac,
+                skip_outro_frac=self.config.temporal_skip_outro_frac,
+            )
+            session.total_frames_to_analyze = len(indices)
+
+            scale_max_h = getattr(self.config, "detection_scale_max_height", 720)
+            full_w, full_h = session.video_resolution
+            if scale_max_h > 0 and full_h > scale_max_h:
+                scale = scale_max_h / full_h
+                target_h = int(full_h * scale)
+                target_w = int(full_w * scale)
+            else:
+                target_h, target_w = full_h, full_w
+                scale = 1.0
+
+            frames = []
+            for i, frame_index in enumerate(indices):
+                if cancel_check and cancel_check():
+                    session.cancel()
+                    raise DetectionCancelledError()
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+                ret, frame = cap.read()
+                if not ret:
+                    continue
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                if scale != 1.0:
+                    gray = cv2.resize(gray, (target_w, target_h), interpolation=cv2.INTER_AREA)
+                frames.append(gray)
+                session.frames_analyzed += 1
+                session.progress = (i + 1) / max(1, len(indices))
+                if progress_callback:
+                    progress_callback(session.progress, f"Sampled frame {i + 1}/{len(indices)}")
+
+            if len(frames) < 3:
+                session.complete()
+                if progress_callback:
+                    progress_callback(1.0, "Insufficient frames for detection")
+                return session
+
+            if progress_callback:
+                progress_callback(0.85, "Analyzing temporal stability...")
+
+            stack = np.stack(frames)
+            results = self._detect_from_frame_stack(
+                stack, video_resolution=(target_w, target_h),
+            )
+
+            if scale != 1.0:
+                inv = 1.0 / scale
+                for r in results:
+                    r.x = int(r.x * inv)
+                    r.y = int(r.y * inv)
+                    r.width = int(r.width * inv)
+                    r.height = int(r.height * inv)
+
+            for r in results:
+                session.add_result(r)
+
+            session.complete()
+            if progress_callback:
+                progress_callback(1.0, f"Complete! Found {len(session.results)} logo region(s)")
+            return session
+
+        except DetectionCancelledError:
+            raise
+        except (VideoReadError, DetectionFailedError):
+            raise
+        except Exception as e:
+            session.error(str(e))
+            raise DetectionFailedError(str(e), video_path) from e
+        finally:
+            if cap is not None:
+                cap.release()
+
+    def _detect_from_frame_stack(
+        self,
+        stack: np.ndarray,
+        video_resolution,
+    ) -> List[DetectionResult]:
+        """Run the full pipeline on a pre-built stack of grayscale frames.
+
+        Package-private: used by `detect_in_video` and by unit tests that want
+        to bypass video I/O.
+
+        Args:
+            stack: np.ndarray of shape (N, H, W), dtype uint8.
+            video_resolution: (width, height) of the frames in the stack.
+
+        Returns:
+            List of DetectionResult, sorted by confidence descending. Each
+            result's `detection_method` is set to "temporal".
+        """
+        cfg = self.config
+
+        var_map = self._compute_variance_map(stack)
+        mask = self._threshold_variance_map(
+            var_map,
+            sensitivity=cfg.sensitivity,
+            base_threshold=cfg.temporal_variance_threshold,
+        )
+        mask = self._cleanup_mask(mask, min_region_pixels=cfg.temporal_min_region_pixels)
+        raw_candidates = self._find_candidates(mask)
+
+        scored: List[Tuple[float, Rect]] = []
+        for rect in raw_candidates:
+            if not passes_size_filter(
+                rect.w, rect.h,
+                min_w=cfg.min_logo_width, min_h=cfg.min_logo_height,
+                max_w=cfg.max_logo_width, max_h=cfg.max_logo_height,
+            ):
+                continue
+            if not passes_aspect_ratio_filter(
+                rect.w, rect.h,
+                ar_min=cfg.aspect_ratio_min, ar_max=cfg.aspect_ratio_max,
+            ):
+                continue
+            if not passes_position_filter(
+                rect, video_resolution=video_resolution,
+                position_zones=cfg.position_zones,
+            ):
+                continue
+            score = self._score_candidate(
+                rect, var_map, video_resolution=video_resolution,
+                position_zones=cfg.position_zones,
+                min_w=cfg.min_logo_width, min_h=cfg.min_logo_height,
+                max_w=cfg.max_logo_width, max_h=cfg.max_logo_height,
+            )
+            scored.append((score, rect))
+
+        scored.sort(key=lambda s: s[0], reverse=True)
+
+        min_conf = getattr(cfg, "min_confidence_to_report", 0.25)
+        results: List[DetectionResult] = []
+        for score, rect in scored:
+            if score < min_conf:
+                continue
+            results.append(DetectionResult(
+                x=rect.x, y=rect.y, width=rect.w, height=rect.h,
+                confidence=float(score),
+                frame_index=0,
+                timestamp=0.0,
+                detection_method="temporal",
+                status="pending",
+            ))
+        return results
