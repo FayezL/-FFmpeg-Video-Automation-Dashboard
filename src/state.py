@@ -25,6 +25,14 @@ class CutMode(Enum):
     CUT_RANGE = "cut_range"  # Cut from start_time to end_time
 
 
+class CutUnit(Enum):
+    """Unit for expressing cut values. Applies to all cut modes."""
+
+    TIME = "time"        # Value is in seconds (existing behavior)
+    PERCENT = "percent"  # Value is a percentage of total duration (0-100)
+    FRAMES = "frames"    # Value is a frame number (converted via fps)
+
+
 @dataclass
 class ProcessingFile:
     """Represents a file being processed"""
@@ -219,6 +227,20 @@ class AppState:
         self.cut_end_seconds: Optional[float] = None
 
         self.cut_last_5_minutes: bool = True
+
+        # Cut unit selector (TIME / PERCENT / FRAMES) — applies to all modes.
+        # Default TIME preserves existing behavior.
+        self.cut_unit: CutUnit = CutUnit.TIME
+
+        # Percent inputs (used when cut_unit == PERCENT)
+        self.cut_amount_percent: float = 5.0       # For CUT_FIRST / CUT_LAST
+        self.cut_start_percent: float = 0.0        # For CUT_RANGE
+        self.cut_end_percent: Optional[float] = None  # None = to end
+
+        # Frame inputs (used when cut_unit == FRAMES)
+        self.cut_amount_frames: int = 0            # For CUT_FIRST / CUT_LAST
+        self.cut_start_frame: int = 0              # For CUT_RANGE
+        self.cut_end_frame: Optional[int] = None   # None = to end
 
         self.apply_delogo: bool = False
         self.delogo_params: DelogoParams = DelogoParams()

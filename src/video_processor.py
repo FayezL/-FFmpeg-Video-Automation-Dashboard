@@ -16,7 +16,41 @@ try:
 except ImportError:
     HAS_FFMPEG_PYTHON = False
 
-from src.state import AppState, ProcessingFile, FileStatus, CutMode
+from src.state import AppState, ProcessingFile, FileStatus, CutMode, CutUnit
+
+
+def convert_cut_value_to_seconds(
+    value: float,
+    unit: CutUnit,
+    video_duration: float,
+    video_fps: float,
+) -> float:
+    """Convert a cut value in the given unit to seconds.
+
+    Args:
+        value: The cut value (seconds, percentage, or frame number).
+        unit: The unit to interpret the value in.
+        video_duration: Total video duration in seconds (for PERCENT).
+        video_fps: Video frame rate (for FRAMES).
+
+    Returns:
+        Equivalent time in seconds (always >= 0).
+
+    Raises:
+        ValueError: If unit is FRAMES and fps is 0/unknown, or unknown unit.
+    """
+    if unit == CutUnit.TIME:
+        return max(0.0, float(value))
+    if unit == CutUnit.PERCENT:
+        clamped = max(0.0, min(100.0, float(value)))
+        return video_duration * (clamped / 100.0)
+    if unit == CutUnit.FRAMES:
+        if video_fps <= 0:
+            raise ValueError(
+                "Cannot use frame-based cut: video FPS is unknown or zero"
+            )
+        return float(value) / float(video_fps)
+    raise ValueError(f"Unknown unit: {unit}")
 
 
 class VideoProcessor:
