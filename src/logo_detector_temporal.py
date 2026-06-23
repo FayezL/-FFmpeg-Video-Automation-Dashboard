@@ -97,6 +97,36 @@ class TemporalLogoDetector:
         frames_float = frames_stack.astype(np.float32)
         return np.var(frames_float, axis=0)
 
+    @staticmethod
+    def _threshold_variance_map(
+        variance_map: np.ndarray,
+        sensitivity: float,
+        base_threshold: float,
+    ) -> np.ndarray:
+        """Convert variance map to a binary mask of "static" pixels.
+
+        Pixels whose variance is below the effective threshold are marked 255
+        (static), the rest are marked 0.
+
+        The effective threshold scales with sensitivity:
+            effective = base * (0.1 + 0.9 * sensitivity)
+        Higher sensitivity → higher threshold → more pixels accepted.
+        The 0.1 floor guarantees we still catch truly-static pixels at
+        sensitivity=0.0 (otherwise the threshold would be 0 and nothing
+        would qualify, since variance is never negative).
+
+        Args:
+            variance_map: Per-pixel variance, shape (H, W), float32.
+            sensitivity: 0.0 (strict) to 1.0 (permissive).
+            base_threshold: The configured `temporal_variance_threshold`.
+
+        Returns:
+            Binary mask (uint8), 255 where static, 0 elsewhere.
+        """
+        effective_threshold = base_threshold * (0.1 + 0.9 * float(sensitivity))
+        mask = np.where(variance_map < effective_threshold, 255, 0).astype(np.uint8)
+        return mask
+
     def detect_in_video(
         self,
         video_path: str,

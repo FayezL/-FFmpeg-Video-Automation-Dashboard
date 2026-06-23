@@ -130,3 +130,43 @@ class TestComputeVarianceMap:
         var_map = TemporalLogoDetector._compute_variance_map(empty_stack)
         assert var_map.shape == (80, 100)
         assert np.all(var_map == 0.0)
+
+
+class TestThresholdVarianceMap:
+    """Test binarization of the variance map."""
+
+    def test_returns_binary_mask(self):
+        var_map = np.array([[0.0, 0.5], [0.001, 0.1]], dtype=np.float32)
+        mask = TemporalLogoDetector._threshold_variance_map(
+            var_map, sensitivity=0.5, base_threshold=0.005,
+        )
+        # effective_threshold = 0.005 * (0.1 + 0.9 * 0.5) = 0.005 * 0.55 = 0.00275
+        # Pixels with variance < 0.00275 become 255
+        expected = np.array([[255, 0], [255, 0]], dtype=np.uint8)
+        np.testing.assert_array_equal(mask, expected)
+
+    def test_higher_sensitivity_more_permissive(self):
+        var_map = np.array([[0.0, 0.004, 0.01]], dtype=np.float32)
+
+        strict = TemporalLogoDetector._threshold_variance_map(
+            var_map, sensitivity=0.0, base_threshold=0.005)
+        loose = TemporalLogoDetector._threshold_variance_map(
+            var_map, sensitivity=1.0, base_threshold=0.005)
+
+        # Strict (sensitivity=0): effective = 0.0005 → only 0.0 passes → 1 pixel
+        # Loose  (sensitivity=1): effective = 0.005  → 0.0 and 0.004 pass → 2 pixels
+        strict_count = int(np.count_nonzero(strict))
+        loose_count = int(np.count_nonzero(loose))
+        assert loose_count > strict_count
+
+    def test_all_static_returns_all_white(self):
+        var_map = np.zeros((10, 10), dtype=np.float32)
+        mask = TemporalLogoDetector._threshold_variance_map(
+            var_map, sensitivity=0.5, base_threshold=0.005)
+        assert np.all(mask == 255)
+
+    def test_all_changing_returns_all_black(self):
+        var_map = np.full((10, 10), 0.5, dtype=np.float32)
+        mask = TemporalLogoDetector._threshold_variance_map(
+            var_map, sensitivity=0.5, base_threshold=0.005)
+        assert np.all(mask == 0)
