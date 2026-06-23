@@ -53,6 +53,23 @@ def convert_cut_value_to_seconds(
     raise ValueError(f"Unknown unit: {unit}")
 
 
+def _parse_frame_rate(rate_string) -> float:
+    """Parse an ffprobe frame-rate string like '30/1' or '24000/1001' into a float.
+
+    Returns 0.0 if the input is None, empty, or cannot be parsed.
+    """
+    if not rate_string:
+        return 0.0
+    try:
+        if "/" in rate_string:
+            num, den = rate_string.split("/", 1)
+            den_f = float(den)
+            return float(num) / den_f if den_f != 0 else 0.0
+        return float(rate_string)
+    except (ValueError, TypeError):
+        return 0.0
+
+
 class VideoProcessor:
     """Handles FFmpeg video processing"""
 
@@ -71,6 +88,9 @@ class VideoProcessor:
                     "duration": float(probe["format"].get("duration", 0)),
                     "width": video_stream.get("width") if video_stream else None,
                     "height": video_stream.get("height") if video_stream else None,
+                    "fps": _parse_frame_rate(
+                        video_stream.get("r_frame_rate") if video_stream else None
+                    ),
                 }
             else:
                 # Fallback to ffprobe command
@@ -81,7 +101,7 @@ class VideoProcessor:
                     "-show_entries",
                     "format=duration",
                     "-show_entries",
-                    "stream=width,height",
+                    "stream=codec_type,width,height,r_frame_rate",
                     "-of",
                     "json",
                     file_path,
@@ -100,6 +120,9 @@ class VideoProcessor:
                     "duration": float(data["format"].get("duration", 0)),
                     "width": video_stream.get("width") if video_stream else None,
                     "height": video_stream.get("height") if video_stream else None,
+                    "fps": _parse_frame_rate(
+                        video_stream.get("r_frame_rate") if video_stream else None
+                    ),
                 }
         except Exception as e:
             self.state.add_log(f"Error probing video: {str(e)}")
@@ -168,6 +191,57 @@ class VideoProcessor:
 
         return cmd
 
+    def _compute_cut_from_unit(
+        self, total_duration: float, video_fps: float
+    ) -> Tuple[float, float]:
+        """Compute (start_time, end_time) in seconds from the current cut_unit setting.
+
+        Reads state.cut_mode, state.cut_unit, and the percent/frame fields.
+        Used when cut_unit is PERCENT or FRAMES (not TIME).
+
+        Returns:
+            (start_time, end_time) in seconds.
+        """
+        unit = self.state.cut_unit
+        mode = self.state.cut_mode
+        cfg = self.state
+
+        if mode == CutMode.NONE:
+            return 0.0, total_duration
+
+        if mode == CutMode.CUT_FIRST:
+            amount = convert_cut_value_to_seconds(
+                cfg.cut_amount_percent if unit == CutUnit.PERCENT else cfg.cut_amount_frames,
+                unit, total_duration, video_fps,
+            )
+            return amount, total_duration
+
+        if mode == CutMode.CUT_LAST:
+            amount = convert_cut_value_to_seconds(
+                cfg.cut_amount_percent if unit == CutUnit.PERCENT else cfg.cut_amount_frames,
+                unit, total_duration, video_fps,
+            )
+            return 0.0, max(1.0, total_duration - amount)
+
+        # CUT_RANGE
+        start_val = (
+            cfg.cut_start_percent if unit == CutUnit.PERCENT else cfg.cut_start_frame
+        )
+        start_time = convert_cut_value_to_seconds(
+            start_val, unit, total_duration, video_fps
+        )
+
+        end_val = (
+            cfg.cut_end_percent if unit == CutUnit.PERCENT else cfg.cut_end_frame
+        )
+        if end_val is None:
+            end_time = total_duration
+        else:
+            end_time = convert_cut_value_to_seconds(
+                end_val, unit, total_duration, video_fps
+            )
+        return start_time, end_time
+
     def process_video(
         self,
         input_path: str,
@@ -195,6 +269,7 @@ class VideoProcessor:
         try:
             metadata = self.probe_video(input_path)
             total_duration = metadata["duration"]
+            video_fps = metadata.get("fps", 0.0)
 
             start_time = 0.0
             end_time = total_duration
@@ -204,6 +279,10 @@ class VideoProcessor:
                     start_time = processing_file.custom_cut_start_seconds
                 if processing_file.custom_cut_end_seconds is not None:
                     end_time = processing_file.custom_cut_end_seconds
+            elif self.state.cut_unit != CutUnit.TIME:
+                start_time, end_time = self._compute_cut_from_unit(
+                    total_duration, video_fps
+                )
             elif self.state.cut_start_enabled or self.state.cut_end_enabled:
                 if self.state.cut_start_enabled:
                     start_seconds = self.state.cut_start_total_seconds_trim
