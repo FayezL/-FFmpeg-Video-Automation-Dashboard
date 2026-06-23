@@ -1295,7 +1295,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
 
         ctk.CTkLabel(
             results_header,
-            text="Detected Regions (highest confidence first):",
+            text="Detected Regions (highest score first):",
             font=ctk.CTkFont(size=13, weight="bold"),
             text_color="#0f172a",
         ).pack(anchor="w")
@@ -1311,8 +1311,10 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             result_row.pack(fill="x", padx=12, pady=4)
 
             # Result info with confidence emphasis
+            # For temporal detector, the score reflects stability, not edge density.
             conf_pct = result.confidence * 100
-            info_text = f"Region #{i + 1}: ({result.x}, {result.y}) {result.width}x{result.height}  |  Confidence: {conf_pct:.0f}%"
+            score_label = "Stability" if result.detection_method == "temporal" else "Confidence"
+            info_text = f"Region #{i + 1}: ({result.x}, {result.y}) {result.width}x{result.height}  |  {score_label}: {conf_pct:.0f}%"
 
             result_label = ctk.CTkLabel(
                 result_row,
