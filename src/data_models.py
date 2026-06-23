@@ -107,6 +107,18 @@ class DetectionConfig:
     # Only report regions with at least this confidence (0.0-1.0). Higher = fewer but more accurate.
     min_confidence_to_report: float = 0.35
 
+    # --- Temporal stability parameters (new default detector) ---
+    # Number of evenly-spaced frames to sample across the video for variance analysis.
+    temporal_num_frames: int = 15
+    # Pixels with per-pixel variance below this value are considered "static" (part of a logo).
+    # Range 0.0 - 1.0 (grayscale intensity variance). Lower threshold = stricter (fewer candidates).
+    temporal_variance_threshold: float = 0.005
+    # Skip the first/last X fraction of the video to avoid intro/outro fades and black buffers.
+    temporal_skip_intro_frac: float = 0.02
+    temporal_skip_outro_frac: float = 0.02
+    # Discard candidate regions smaller than this many pixels (noise cleanup).
+    temporal_min_region_pixels: int = 200
+
     def validate(self) -> bool:
         """Validate all configuration constraints"""
         assert 0.0 <= self.sensitivity <= 1.0, "sensitivity must be 0-1"
@@ -123,6 +135,11 @@ class DetectionConfig:
         assert self.edge_threshold_low < self.edge_threshold_high <= 255, "high > low"
         assert 0.0 <= self.merge_overlap_threshold <= 1.0, "merge threshold must be 0-1"
         assert 0.0 <= self.min_confidence_to_report <= 1.0, "min_confidence_to_report must be 0-1"
+        assert 3 <= self.temporal_num_frames <= 60, "temporal_num_frames must be 3-60"
+        assert 0.0 <= self.temporal_variance_threshold <= 1.0, "temporal_variance_threshold must be 0-1"
+        assert 0.0 <= self.temporal_skip_intro_frac < 0.5, "temporal_skip_intro_frac must be 0 to <0.5"
+        assert 0.0 <= self.temporal_skip_outro_frac < 0.5, "temporal_skip_outro_frac must be 0 to <0.5"
+        assert self.temporal_min_region_pixels > 0, "temporal_min_region_pixels must be > 0"
         return True
 
 
