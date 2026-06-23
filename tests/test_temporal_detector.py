@@ -9,6 +9,7 @@ tests/integration/test_temporal_detection.py.
 import numpy as np
 
 from src.data_models import DetectionConfig
+from src.logo_detection_utils import Rect
 from src.logo_detector_temporal import TemporalLogoDetector
 
 
@@ -213,3 +214,38 @@ class TestCleanupMask:
         mask = np.zeros((100, 100), dtype=np.uint8)
         cleaned = TemporalLogoDetector._cleanup_mask(mask, min_region_pixels=200)
         assert np.all(cleaned == 0)
+
+
+class TestFindCandidates:
+    """Test extraction of candidate rectangles from a cleaned mask."""
+
+    def test_finds_single_rectangle(self):
+        mask = np.zeros((200, 200), dtype=np.uint8)
+        mask[10:60, 10:60] = 255  # 50x50 square at (10,10)
+
+        candidates = TemporalLogoDetector._find_candidates(mask)
+        assert len(candidates) == 1
+        rect = candidates[0]
+        assert rect.w == 50
+        assert rect.h == 50
+        assert rect.x == 10
+        assert rect.y == 10
+
+    def test_finds_multiple_disjoint_rectangles(self):
+        mask = np.zeros((200, 200), dtype=np.uint8)
+        mask[10:30, 10:30] = 255    # top-left
+        mask[150:180, 150:180] = 255  # bottom-right
+
+        candidates = TemporalLogoDetector._find_candidates(mask)
+        assert len(candidates) == 2
+
+    def test_empty_mask_returns_no_candidates(self):
+        mask = np.zeros((200, 200), dtype=np.uint8)
+        candidates = TemporalLogoDetector._find_candidates(mask)
+        assert candidates == []
+
+    def test_returns_rect_objects(self):
+        mask = np.zeros((200, 200), dtype=np.uint8)
+        mask[10:60, 10:60] = 255
+        candidates = TemporalLogoDetector._find_candidates(mask)
+        assert all(isinstance(c, Rect) for c in candidates)

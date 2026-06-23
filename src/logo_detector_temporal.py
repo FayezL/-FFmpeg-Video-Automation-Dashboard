@@ -25,7 +25,7 @@ from src.exceptions import (  # noqa: F401
     DetectionFailedError,
     VideoReadError,
 )
-from src.logo_detection_utils import Rect  # noqa: F401
+from src.logo_detection_utils import Rect
 
 
 class TemporalLogoDetector:
@@ -152,6 +152,26 @@ class TemporalLogoDetector:
             if area >= min_region_pixels:
                 cleaned[labels == label_idx] = 255
         return cleaned
+
+    @staticmethod
+    def _find_candidates(mask: np.ndarray) -> List[Rect]:
+        """Extract candidate rectangles from a cleaned binary mask.
+
+        Uses OpenCV contour detection. Each external contour's bounding
+        rectangle becomes one candidate.
+
+        Args:
+            mask: Cleaned binary mask (uint8, 0 or 255).
+
+        Returns:
+            List of `Rect` objects, one per detected external contour.
+        """
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        candidates: List[Rect] = []
+        for contour in contours:
+            x, y, w, h = cv2.boundingRect(contour)
+            candidates.append(Rect(x=int(x), y=int(y), w=int(w), h=int(h)))
+        return candidates
 
     def detect_in_video(
         self,
