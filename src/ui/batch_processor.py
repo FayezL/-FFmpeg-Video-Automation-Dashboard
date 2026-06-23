@@ -15,6 +15,7 @@ from src.state import AppState, ProcessingFile, FileStatus, CutMode
 from src.video_processor import VideoProcessor
 from src.ui.drag_drop import DragDropHandler
 from src.logo_detector import LogoDetector
+from src.logo_detector_temporal import TemporalLogoDetector
 from src.data_models import DetectionConfig, DetectionSession
 
 try:
@@ -421,13 +422,16 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         content = ctk.CTkFrame(detection_frame, fg_color="transparent")
         content.pack(fill="x", padx=16, pady=(0, 16))
 
-        # Detection method: OpenCV or Google Cloud Vision (AI) if available
+        # Detection method: Temporal (default), legacy edges, or Cloud Vision if available
         method_row = ctk.CTkFrame(content, fg_color="transparent")
         method_row.pack(fill="x", pady=(0, 8))
         ctk.CTkLabel(
             method_row, text="Method:", font=ctk.CTkFont(size=12), text_color="#60a5fa"
         ).pack(side="left", padx=(0, 8))
-        method_values = ["OpenCV (local)"]
+        method_values = [
+            "Temporal Stability (recommended)",
+            "OpenCV Edges (legacy)",
+        ]
         if vision_detector_available():
             method_values.append("Google Cloud Vision (AI)")
         self.detection_method_var = ctk.StringVar(value=method_values[0])
@@ -1091,14 +1095,14 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
                     file.custom_cut_start_seconds = (
                         self._time_to_seconds(start_text) if start_text else None
                     )
-                except:
+                except Exception:
                     file.custom_cut_start_seconds = None
                 try:
                     end_text = end_entry.get().strip()
                     file.custom_cut_end_seconds = (
                         self._time_to_seconds(end_text) if end_text else None
                     )
-                except:
+                except Exception:
                     file.custom_cut_end_seconds = None
 
             use_custom.configure(command=update_cut)
@@ -1181,10 +1185,12 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         )
 
         # Run detection in background thread
+        selected_method = self.detection_method_var.get()
         use_vision = (
             vision_detector_available()
-            and self.detection_method_var.get() == "Google Cloud Vision (AI)"
+            and selected_method == "Google Cloud Vision (AI)"
         )
+        use_temporal = selected_method == "Temporal Stability (recommended)"
 
         def run_detection():
             try:
@@ -1195,6 +1201,8 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
 
                 if use_vision and VisionLogoDetector is not None:
                     detector = VisionLogoDetector(config)
+                elif use_temporal:
+                    detector = TemporalLogoDetector(config)
                 else:
                     detector = LogoDetector(config)
 
@@ -1219,9 +1227,10 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
                 # Update UI with results on main thread
                 self.after(0, lambda: self._show_detection_results(session))
 
-            except Exception as e:
-                # Show error on main thread
-                self.after(0, lambda: self._on_detection_error(str(e)))
+            except Exception as exc:
+                # Show error on main thread (bind as default arg so the lambda
+                # captures the value rather than the late-bound closure variable)
+                self.after(0, lambda e=exc: self._on_detection_error(str(e)))
 
         # Start detection thread
         detection_thread = threading.Thread(target=run_detection, daemon=True)
@@ -1286,7 +1295,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
 
         ctk.CTkLabel(
             results_header,
-            text="Detected Regions (highest confidence first):",
+            text="Detected Regions (highest score first):",
             font=ctk.CTkFont(size=13, weight="bold"),
             text_color="#0f172a",
         ).pack(anchor="w")
@@ -1302,8 +1311,10 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             result_row.pack(fill="x", padx=12, pady=4)
 
             # Result info with confidence emphasis
+            # For temporal detector, the score reflects stability, not edge density.
             conf_pct = result.confidence * 100
-            info_text = f"Region #{i + 1}: ({result.x}, {result.y}) {result.width}x{result.height}  |  Confidence: {conf_pct:.0f}%"
+            score_label = "Stability" if result.detection_method == "temporal" else "Confidence"
+            info_text = f"Region #{i + 1}: ({result.x}, {result.y}) {result.width}x{result.height}  |  {score_label}: {conf_pct:.0f}%"
 
             result_label = ctk.CTkLabel(
                 result_row,
@@ -1482,7 +1493,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             self.profile_dropdown.configure(values=profile_names)
             self.profile_var.set("Select profile...")
 
-        except Exception as e:
+        except Exception:
             # Silently fail - profiles are optional
             pass
 

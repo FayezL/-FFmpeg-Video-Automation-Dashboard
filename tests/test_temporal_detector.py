@@ -1,0 +1,411 @@
+"""
+Unit tests for the temporal-stability logo detector.
+
+Most tests use synthetic NumPy frame stacks (no real video files needed).
+The end-to-end `detect_in_video` test on a real video lives in
+tests/integration/test_temporal_detection.py.
+"""
+
+import numpy as np
+
+from src.data_models import DetectionConfig
+from src.logo_detection_utils import Rect
+from src.logo_detector_temporal import TemporalLogoDetector
+
+
+class TestTemporalLogoDetectorSkeleton:
+    """Verify the class exists and has the expected interface."""
+
+    def test_can_instantiate_with_config(self):
+        config = DetectionConfig()
+        detector = TemporalLogoDetector(config)
+        assert detector.config is config
+
+    def test_has_detect_in_video_method(self):
+        detector = TemporalLogoDetector(DetectionConfig())
+        assert callable(getattr(detector, "detect_in_video", None))
+
+
+class TestSampleFrameIndices:
+    """Test the pure frame-index sampling logic."""
+
+    def test_returns_correct_count(self):
+        indices = TemporalLogoDetector._sample_frame_indices(
+            total_frames=10000, num_frames=15,
+            skip_intro_frac=0.02, skip_outro_frac=0.02,
+        )
+        assert len(indices) == 15
+
+    def test_indices_within_valid_range(self):
+        total = 10000
+        indices = TemporalLogoDetector._sample_frame_indices(
+            total_frames=total, num_frames=15,
+            skip_intro_frac=0.02, skip_outro_frac=0.02,
+        )
+        for i in indices:
+            assert 0 <= i < total
+
+    def test_skips_intro_and_outro(self):
+        total = 10000
+        indices = TemporalLogoDetector._sample_frame_indices(
+            total_frames=total, num_frames=15,
+            skip_intro_frac=0.10, skip_outro_frac=0.10,
+        )
+        # Intro region is first 10% = frames 0-999; outro is last 10% = 9000-9999
+        # Sampled indices must lie strictly within [1000, 9000)
+        for i in indices:
+            assert 1000 <= i < 9000, f"Index {i} falls inside skipped intro/outro region"
+
+    def test_indices_are_evenly_spaced(self):
+        total = 10000
+        indices = TemporalLogoDetector._sample_frame_indices(
+            total_frames=total, num_frames=5,
+            skip_intro_frac=0.0, skip_outro_frac=0.0,
+        )
+        # With no skip and 5 frames over 10000, spacing should be ~2500
+        diffs = [indices[i + 1] - indices[i] for i in range(len(indices) - 1)]
+        assert all(2400 <= d <= 2600 for d in diffs), f"Uneven spacing: {diffs}"
+
+    def test_returns_empty_when_total_below_minimum(self):
+        # If a video has fewer frames than requested, return as many as possible
+        indices = TemporalLogoDetector._sample_frame_indices(
+            total_frames=3, num_frames=15,
+            skip_intro_frac=0.0, skip_outro_frac=0.0,
+        )
+        assert indices == [0, 1, 2]
+
+    def test_handles_total_zero(self):
+        indices = TemporalLogoDetector._sample_frame_indices(
+            total_frames=0, num_frames=15,
+            skip_intro_frac=0.02, skip_outro_frac=0.02,
+        )
+        assert indices == []
+
+
+class TestComputeVarianceMap:
+    """Test per-pixel temporal variance computation."""
+
+    def test_identical_frames_have_zero_variance(self):
+        # 10 identical 100x80 frames → variance is 0 everywhere
+        frame = np.random.randint(0, 256, size=(80, 100), dtype=np.uint8)
+        stack = np.stack([frame] * 10)
+        var_map = TemporalLogoDetector._compute_variance_map(stack)
+        assert var_map.shape == (80, 100)
+        assert var_map.dtype == np.float32
+        assert np.all(var_map == 0.0)
+
+    def test_random_frames_have_positive_variance(self):
+        # 10 different random frames → variance > 0 everywhere
+        stack = np.stack([
+            np.random.randint(0, 256, size=(80, 100), dtype=np.uint8)
+            for _ in range(10)
+        ])
+        var_map = TemporalLogoDetector._compute_variance_map(stack)
+        assert np.all(var_map > 0.0)
+
+    def test_static_corner_low_variance_changing_elsewhere(self):
+        # 10 frames: a 20x20 region in the top-right is identical; the rest is random
+        h, w = 80, 100
+        n = 10
+        corner_w, corner_h = 20, 20
+        corner_x, corner_y = w - corner_w, 0  # top-right
+
+        frames = []
+        for _ in range(n):
+            f = np.random.randint(0, 256, size=(h, w), dtype=np.uint8)
+            # Overwrite the corner with a fixed pattern (same across all frames)
+            f[corner_y:corner_y + corner_h, corner_x:corner_x + corner_w] = 128
+            frames.append(f)
+        stack = np.stack(frames)
+
+        var_map = TemporalLogoDetector._compute_variance_map(stack)
+
+        corner_region = var_map[corner_y:corner_y + corner_h, corner_x:corner_x + corner_w]
+        outside_region = var_map[:corner_h, :corner_x]  # top-left area (random)
+
+        assert np.all(corner_region == 0.0)  # static corner has zero variance
+        assert np.all(outside_region > 0.0)  # random area has positive variance
+
+    def test_returns_empty_for_empty_stack(self):
+        empty_stack = np.zeros((0, 80, 100), dtype=np.uint8)
+        var_map = TemporalLogoDetector._compute_variance_map(empty_stack)
+        assert var_map.shape == (80, 100)
+        assert np.all(var_map == 0.0)
+
+
+class TestThresholdVarianceMap:
+    """Test binarization of the variance map."""
+
+    def test_returns_binary_mask(self):
+        var_map = np.array([[0.0, 0.5], [0.001, 0.1]], dtype=np.float32)
+        mask = TemporalLogoDetector._threshold_variance_map(
+            var_map, sensitivity=0.5, base_threshold=0.005,
+        )
+        # effective_threshold = 0.005 * (0.1 + 0.9 * 0.5) = 0.005 * 0.55 = 0.00275
+        # Pixels with variance < 0.00275 become 255
+        expected = np.array([[255, 0], [255, 0]], dtype=np.uint8)
+        np.testing.assert_array_equal(mask, expected)
+
+    def test_higher_sensitivity_more_permissive(self):
+        var_map = np.array([[0.0, 0.004, 0.01]], dtype=np.float32)
+
+        strict = TemporalLogoDetector._threshold_variance_map(
+            var_map, sensitivity=0.0, base_threshold=0.005)
+        loose = TemporalLogoDetector._threshold_variance_map(
+            var_map, sensitivity=1.0, base_threshold=0.005)
+
+        # Strict (sensitivity=0): effective = 0.0005 → only 0.0 passes → 1 pixel
+        # Loose  (sensitivity=1): effective = 0.005  → 0.0 and 0.004 pass → 2 pixels
+        strict_count = int(np.count_nonzero(strict))
+        loose_count = int(np.count_nonzero(loose))
+        assert loose_count > strict_count
+
+    def test_all_static_returns_all_white(self):
+        var_map = np.zeros((10, 10), dtype=np.float32)
+        mask = TemporalLogoDetector._threshold_variance_map(
+            var_map, sensitivity=0.5, base_threshold=0.005)
+        assert np.all(mask == 255)
+
+    def test_all_changing_returns_all_black(self):
+        var_map = np.full((10, 10), 0.5, dtype=np.float32)
+        mask = TemporalLogoDetector._threshold_variance_map(
+            var_map, sensitivity=0.5, base_threshold=0.005)
+        assert np.all(mask == 0)
+
+
+class TestCleanupMask:
+    """Test morphological cleanup of the binary mask."""
+
+    def test_removes_tiny_blobs(self):
+        # Mask with one big white rectangle and a few single-pixel noise blobs
+        mask = np.zeros((100, 100), dtype=np.uint8)
+        mask[10:50, 10:50] = 255  # 40x40 = 1600 pixels (keep)
+        mask[0, 0] = 255          # 1 pixel (remove)
+        mask[99, 99] = 255        # 1 pixel (remove)
+        mask[60, 60] = 255        # 1 pixel (remove)
+
+        cleaned = TemporalLogoDetector._cleanup_mask(mask, min_region_pixels=200)
+
+        # Big rectangle survives; isolated pixels are removed
+        assert cleaned[30, 30] == 255  # center of big rect
+        assert cleaned[0, 0] == 0
+        assert cleaned[99, 99] == 0
+        assert cleaned[60, 60] == 0
+
+    def test_merges_nearby_blobs(self):
+        # Two white rectangles close together should merge into one blob
+        mask = np.zeros((100, 100), dtype=np.uint8)
+        mask[10:30, 10:20] = 255  # left blob
+        mask[10:30, 23:33] = 255  # right blob (3px gap)
+
+        cleaned = TemporalLogoDetector._cleanup_mask(mask, min_region_pixels=200)
+
+        # The gap between them should now be filled
+        assert cleaned[20, 21] == 255  # gap closed
+        assert cleaned[20, 11] == 255  # left blob intact
+
+    def test_preserves_large_blob(self):
+        mask = np.zeros((100, 100), dtype=np.uint8)
+        mask[20:60, 20:60] = 255  # 40x40 = 1600 pixels
+        cleaned = TemporalLogoDetector._cleanup_mask(mask, min_region_pixels=200)
+        assert np.count_nonzero(cleaned) >= 1600 - 50  # roughly preserved
+
+    def test_empty_mask_stays_empty(self):
+        mask = np.zeros((100, 100), dtype=np.uint8)
+        cleaned = TemporalLogoDetector._cleanup_mask(mask, min_region_pixels=200)
+        assert np.all(cleaned == 0)
+
+
+class TestFindCandidates:
+    """Test extraction of candidate rectangles from a cleaned mask."""
+
+    def test_finds_single_rectangle(self):
+        mask = np.zeros((200, 200), dtype=np.uint8)
+        mask[10:60, 10:60] = 255  # 50x50 square at (10,10)
+
+        candidates = TemporalLogoDetector._find_candidates(mask)
+        assert len(candidates) == 1
+        rect = candidates[0]
+        assert rect.w == 50
+        assert rect.h == 50
+        assert rect.x == 10
+        assert rect.y == 10
+
+    def test_finds_multiple_disjoint_rectangles(self):
+        mask = np.zeros((200, 200), dtype=np.uint8)
+        mask[10:30, 10:30] = 255    # top-left
+        mask[150:180, 150:180] = 255  # bottom-right
+
+        candidates = TemporalLogoDetector._find_candidates(mask)
+        assert len(candidates) == 2
+
+    def test_empty_mask_returns_no_candidates(self):
+        mask = np.zeros((200, 200), dtype=np.uint8)
+        candidates = TemporalLogoDetector._find_candidates(mask)
+        assert candidates == []
+
+    def test_returns_rect_objects(self):
+        mask = np.zeros((200, 200), dtype=np.uint8)
+        mask[10:60, 10:60] = 255
+        candidates = TemporalLogoDetector._find_candidates(mask)
+        assert all(isinstance(c, Rect) for c in candidates)
+
+
+class TestScoreCandidate:
+    """Test the candidate scoring function."""
+
+    def _var_map(self, value: float, shape=(200, 200)) -> np.ndarray:
+        return np.full(shape, value, dtype=np.float32)
+
+    def test_low_variance_scores_higher_than_high_variance(self):
+        low_var = self._var_map(0.0001)   # very stable
+        high_var = self._var_map(0.5)     # very unstable
+
+        rect = Rect(x=0, y=0, w=50, h=50)
+        score_low = TemporalLogoDetector._score_candidate(
+            rect, low_var, video_resolution=(200, 200),
+            position_zones=["top-left"],
+            min_w=20, min_h=20, max_w=450, max_h=220,
+        )
+        score_high = TemporalLogoDetector._score_candidate(
+            rect, high_var, video_resolution=(200, 200),
+            position_zones=["top-left"],
+            min_w=20, min_h=20, max_w=450, max_h=220,
+        )
+        assert score_low > score_high
+
+    def test_corner_position_scores_higher_than_center(self):
+        var_map = self._var_map(0.0001)  # uniform low variance
+
+        corner_rect = Rect(x=0, y=0, w=50, h=50)
+        center_rect = Rect(x=75, y=75, w=50, h=50)  # center of 200x200
+
+        score_corner = TemporalLogoDetector._score_candidate(
+            corner_rect, var_map, video_resolution=(200, 200),
+            position_zones=["top-left"],
+            min_w=20, min_h=20, max_w=450, max_h=220,
+        )
+        score_center = TemporalLogoDetector._score_candidate(
+            center_rect, var_map, video_resolution=(200, 200),
+            position_zones=["top-left"],
+            min_w=20, min_h=20, max_w=450, max_h=220,
+        )
+        assert score_corner > score_center
+
+    def test_score_is_in_zero_to_one(self):
+        var_map = self._var_map(0.0001)
+        rect = Rect(x=0, y=0, w=50, h=50)
+        score = TemporalLogoDetector._score_candidate(
+            rect, var_map, video_resolution=(200, 200),
+            position_zones=["top-left"],
+            min_w=20, min_h=20, max_w=450, max_h=220,
+        )
+        assert 0.0 <= score <= 1.0
+
+
+class TestDetectFromFrameStack:
+    """End-to-end test of the detection pipeline on synthetic frame stacks.
+
+    These bypass video I/O by calling the package-private entry point that
+    takes a pre-built stack of grayscale frames.
+    """
+
+    def _make_stack_with_corner_logo(self, n=15, h=480, w=640,
+                                     logo_x=580, logo_y=10,
+                                     logo_w=50, logo_h=40) -> np.ndarray:
+        """Build a synthetic frame stack: random noise everywhere except a
+        static rectangle in the top-right corner (the 'logo')."""
+        frames = []
+        for _ in range(n):
+            f = np.random.randint(0, 256, size=(h, w), dtype=np.uint8)
+            f[logo_y:logo_y + logo_h, logo_x:logo_x + logo_w] = 100  # fixed logo
+            frames.append(f)
+        return np.stack(frames)
+
+    def test_finds_static_corner_logo(self):
+        stack = self._make_stack_with_corner_logo()
+        config = DetectionConfig(
+            sensitivity=0.5,
+            position_zones=["top-right"],
+            min_logo_width=10, min_logo_height=10,
+            max_logo_width=200, max_logo_height=200,
+            temporal_min_region_pixels=100,
+        )
+        detector = TemporalLogoDetector(config)
+        results = detector._detect_from_frame_stack(
+            stack, video_resolution=(640, 480),
+        )
+        assert len(results) >= 1
+        top = results[0]
+        # Top result should overlap the known logo rectangle (580, 10, 50, 40)
+        overlap_x = max(0, min(top.x + top.width, 630) - max(top.x, 580))
+        overlap_y = max(0, min(top.y + top.height, 50) - max(top.y, 10))
+        assert overlap_x * overlap_y > 0  # at least some overlap
+
+    def test_no_static_region_returns_empty(self):
+        # Pure random noise — no static regions
+        stack = np.stack([
+            np.random.randint(0, 256, size=(480, 640), dtype=np.uint8)
+            for _ in range(15)
+        ])
+        config = DetectionConfig(
+            sensitivity=0.5,
+            position_zones=["top-right"],
+            min_logo_width=10, min_logo_height=10,
+            max_logo_width=200, max_logo_height=200,
+            temporal_min_region_pixels=100,
+        )
+        detector = TemporalLogoDetector(config)
+        results = detector._detect_from_frame_stack(
+            stack, video_resolution=(640, 480),
+        )
+        assert results == []
+
+    def test_flickering_overlay_is_not_detected(self):
+        # Static logo in the corner + a 'subtitle' bar that only appears in some frames
+        n = 15
+        h, w = 480, 640
+        frames = []
+        for i in range(n):
+            f = np.random.randint(0, 256, size=(h, w), dtype=np.uint8)
+            # Static logo top-right
+            f[10:50, 580:630] = 100
+            # Flickering 'subtitle' at the bottom — visible only every 3rd frame
+            if i % 3 == 0:
+                f[440:470, 100:540] = 200
+            frames.append(f)
+        stack = np.stack(frames)
+
+        config = DetectionConfig(
+            sensitivity=0.5,
+            position_zones=["top-right", "bottom-left", "bottom-right"],
+            min_logo_width=10, min_logo_height=10,
+            max_logo_width=200, max_logo_height=200,
+            temporal_min_region_pixels=100,
+        )
+        detector = TemporalLogoDetector(config)
+        results = detector._detect_from_frame_stack(
+            stack, video_resolution=(w, h),
+        )
+        # The flickering subtitle is NOT static (variance > 0), so we should
+        # only get the corner logo, not the subtitle bar.
+        for r in results:
+            # No result should be in the subtitle region (y around 440-470)
+            assert not (440 <= r.y <= 470), f"False positive on flickering subtitle: {r}"
+
+    def test_results_sorted_by_score_descending(self):
+        stack = self._make_stack_with_corner_logo()
+        config = DetectionConfig(
+            sensitivity=0.5,
+            position_zones=["top-right"],
+            min_logo_width=10, min_logo_height=10,
+            max_logo_width=200, max_logo_height=200,
+            temporal_min_region_pixels=100,
+        )
+        detector = TemporalLogoDetector(config)
+        results = detector._detect_from_frame_stack(
+            stack, video_resolution=(640, 480),
+        )
+        if len(results) >= 2:
+            for i in range(len(results) - 1):
+                assert results[i].confidence >= results[i + 1].confidence

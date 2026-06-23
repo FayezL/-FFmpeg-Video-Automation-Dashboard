@@ -3,12 +3,11 @@ Unit tests for logo detection module
 """
 
 import pytest
-import numpy as np
 from pathlib import Path
 
 from src.data_models import DetectionConfig, DetectionResult
 from src.logo_detector import LogoDetector
-from src.exceptions import VideoReadError, DetectionFailedError
+from src.exceptions import DetectionFailedError
 
 
 class TestDetectionConfig:
@@ -220,6 +219,52 @@ class TestCancelCheck:
             return True
 
         assert cancel_check_true() is True
+
+
+class TestTemporalConfigFields:
+    """Test the new temporal-stability fields on DetectionConfig"""
+
+    def test_temporal_defaults(self):
+        """New temporal fields should have sensible defaults"""
+        config = DetectionConfig()
+        assert config.temporal_num_frames == 15
+        assert config.temporal_variance_threshold == 0.005
+        assert config.temporal_skip_intro_frac == 0.02
+        assert config.temporal_skip_outro_frac == 0.02
+        assert config.temporal_min_region_pixels == 200
+
+    def test_temporal_config_validates(self):
+        """Default temporal config should pass validation"""
+        config = DetectionConfig()
+        assert config.validate()
+
+    def test_temporal_num_frames_bounds(self):
+        """temporal_num_frames must be between 3 and 60"""
+        with pytest.raises(AssertionError, match="temporal_num_frames"):
+            DetectionConfig(temporal_num_frames=2).validate()
+        with pytest.raises(AssertionError, match="temporal_num_frames"):
+            DetectionConfig(temporal_num_frames=61).validate()
+
+    def test_temporal_threshold_bounds(self):
+        """temporal_variance_threshold must be between 0 and 1"""
+        with pytest.raises(AssertionError, match="temporal_variance_threshold"):
+            DetectionConfig(temporal_variance_threshold=-0.01).validate()
+        with pytest.raises(AssertionError, match="temporal_variance_threshold"):
+            DetectionConfig(temporal_variance_threshold=1.5).validate()
+
+    def test_temporal_skip_bounds(self):
+        """Skip fractions must be between 0 and 0.5"""
+        with pytest.raises(AssertionError, match="temporal_skip_intro_frac"):
+            DetectionConfig(temporal_skip_intro_frac=0.6).validate()
+        with pytest.raises(AssertionError, match="temporal_skip_outro_frac"):
+            DetectionConfig(temporal_skip_outro_frac=-0.1).validate()
+
+    def test_backward_compat_missing_temporal_fields(self):
+        """Constructing DetectionConfig from old data (no temporal fields) should work"""
+        old_data = {"sensitivity": 0.5, "frame_sampling": 30}
+        config = DetectionConfig(**old_data)
+        assert config.temporal_num_frames == 15
+        assert config.validate()
 
 
 # Integration test (requires real video file)
