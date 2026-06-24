@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "magic-tv-box"
+name = "videoforge"
 version = "1.0.0"
 description = "FFmpeg Video Automation Dashboard"
 readme = "README.md"
@@ -30,6 +30,6 @@ dependencies = [
 ]
 
 [project.scripts]
-magic-tv-box = "main:main"
+videoforge = "main:main"
 
 

@@ -1,5 +1,5 @@
 """
-Setup script for MagicTVBox
+Setup script for VideoForge
 """
 
 from setuptools import setup, find_packages
@@ -10,7 +10,7 @@ readme_file = Path(__file__).parent / "README.md"
 long_description = readme_file.read_text(encoding="utf-8") if readme_file.exists() else ""
 
 setup(
-    name="magic-tv-box",
+    name="videoforge",
     version="1.0.0",
     description="FFmpeg Video Automation Dashboard",
     long_description=long_description,
@@ -27,7 +27,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "magic-tv-box=main:main",
+            "videoforge=main:main",
         ],
     },
     classifiers=[

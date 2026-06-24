@@ -27,7 +27,7 @@ def check_single_instance():
     """
     global _lock_file
 
-    lock_path = Path(tempfile.gettempdir()) / "MagicTVBox.lock"
+    lock_path = Path(tempfile.gettempdir()) / "VideoForge.lock"
 
     try:
         if lock_path.exists():
