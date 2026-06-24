@@ -8,7 +8,7 @@
 
 ## Summary
 
-Hours support has been successfully added to all trim modes in the MagicTVBox video automation dashboard. Users can now specify time in hours, minutes, and seconds across all trim operations.
+Hours support has been successfully added to all trim modes in the VideoForge video automation dashboard. Users can now specify time in hours, minutes, and seconds across all trim operations.
 
 ---
 

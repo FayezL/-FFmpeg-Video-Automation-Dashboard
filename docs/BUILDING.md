@@ -1,6 +1,6 @@
-# Building MagicTVBox Standalone Executable
+# Building VideoForge Standalone Executable
 
-This guide explains how to build a standalone Windows executable for MagicTVBox.
+This guide explains how to build a standalone Windows executable for VideoForge.
 
 ## Prerequisites
 
@@ -25,7 +25,7 @@ python src/packaging/build_exe.py
 This automated script will:
 1. Clean previous builds
 2. Run PyInstaller with the correct configuration
-3. Create the executable in `dist/MagicTVBox.exe`
+3. Create the executable in `dist/VideoForge.exe`
 4. Report the final executable size
 
 ## Manual Build
@@ -33,14 +33,14 @@ This automated script will:
 If you prefer to run PyInstaller directly:
 
 ```bash
-pyinstaller --clean --noconfirm src/packaging/MagicTVBox.spec
+pyinstaller --clean --noconfirm src/packaging/VideoForge.spec
 ```
 
 ## Build Output
 
 After a successful build:
 
-- **Executable**: `dist/MagicTVBox.exe`
+- **Executable**: `dist/VideoForge.exe`
 - **Build files**: `build/` (can be deleted)
 - **Expected size**: 180-220 MB (with UPX compression)
 
@@ -49,7 +49,7 @@ After a successful build:
 The executable bundles FFmpeg from `C:\ffmpeg\bin\ffmpeg.exe`.
 
 **If FFmpeg is not at this location**:
-1. Edit `src/packaging/MagicTVBox.spec`
+1. Edit `src/packaging/VideoForge.spec`
 2. Update the `binaries` path:
    ```python
    binaries=[
@@ -64,7 +64,7 @@ The executable bundles FFmpeg from `C:\ffmpeg\bin\ffmpeg.exe`.
 
 ### Basic Test (on your machine)
 ```bash
-dist\MagicTVBox.exe
+dist\VideoForge.exe
 ```
 
 The application should:
@@ -76,7 +76,7 @@ The application should:
 
 **Important**: Test on a computer **without Python installed** to verify true standalone behavior.
 
-1. Copy `dist\MagicTVBox.exe` to the test machine
+1. Copy `dist\VideoForge.exe` to the test machine
 2. Double-click to launch
 3. Verify all features work:
    - File selection (drag-and-drop or browse)
@@ -95,7 +95,7 @@ The application should:
 - Install PyInstaller: `pip install pyinstaller==5.13.0`
 
 **FFmpeg not bundled**:
-- Verify FFmpeg path in `MagicTVBox.spec`
+- Verify FFmpeg path in `VideoForge.spec`
 - Or remove FFmpeg from spec and let users install it separately
 
 ### Executable Issues
@@ -103,7 +103,7 @@ The application should:
 **Application won't start**:
 - Check if antivirus is blocking it
 - Try running as Administrator
-- Check `build/MagicTVBox/warn-MagicTVBox.txt` for warnings
+- Check `build/VideoForge/warn-VideoForge.txt` for warnings
 
 **"FFmpeg not found" error**:
 - FFmpeg was not bundled correctly
@@ -141,7 +141,7 @@ Current configuration achieves ~200MB with these optimizations:
 ## Distribution
 
 ### Simple Distribution
-Just share the `MagicTVBox.exe` file. Users can:
+Just share the `VideoForge.exe` file. Users can:
 1. Download it
 2. Double-click to run
 3. No installation needed!
@@ -173,8 +173,8 @@ To automate builds:
 - name: Upload Artifact
   uses: actions/upload-artifact@v2
   with:
-    name: MagicTVBox-Windows
-    path: dist/MagicTVBox.exe
+    name: VideoForge-Windows
+    path: dist/VideoForge.exe
 ```
 
 ## Version Updates
@@ -224,7 +224,7 @@ If you encounter issues:
 1. Check the troubleshooting section above
 2. Verify all prerequisites are met
 3. Try a clean build (delete `build/` and `dist/` directories first)
-4. Check the PyInstaller warnings in `build/MagicTVBox/warn-MagicTVBox.txt`
+4. Check the PyInstaller warnings in `build/VideoForge/warn-VideoForge.txt`
 
 ---
 

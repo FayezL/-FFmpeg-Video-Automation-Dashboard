@@ -1,4 +1,4 @@
-# 🚀 MagicTVBox - Windows Executable Packaging Guide
+# 🚀 VideoForge - Windows Executable Packaging Guide
 
 **Date**: 2026-03-07
 **Status**: ✅ READY TO BUILD
@@ -12,7 +12,7 @@
 
 | Component | Path | Status |
 |----------|------|--------|
-| PyInstaller spec | `src/packaging/MagicTVBox.spec` | ✅ READY |
+| PyInstaller spec | `src/packaging/VideoForge.spec` | ✅ READY |
 | Build script | `src/packaging/build_exe.py` | ✅ READY |
 | Version info | `src/packaging/version_info.txt` | ✅ READY |
 | Entry point | `main.py` | ✅ READY |
@@ -29,7 +29,7 @@
 - FFmpeg bundling: Dynamic detection
 
 **Expected Output**:
-- Location: `dist/MagicTVBox.exe`
+- Location: `dist/VideoForge.exe`
 - Size: 180-220 MB
 - Dependencies: All bundled
 - Theme: Dark blue professional
@@ -103,7 +103,7 @@ If you prefer manual control:
 
 ```cmd
 cd C:\Users\Admin\Documents\GitHub\-FFmpeg-Video-Automation-Dashboard
-pyinstaller --clean --noconfirm src/packaging/MagicTVBox.spec
+pyinstaller --clean --noconfirm src/packaging/VideoForge.spec
 ```
 
 ---
@@ -142,7 +142,7 @@ After successful build:
 ```
 C:\Users\Admin\Documents\GitHub\-FFmpeg-Video-Automation-Dashboard\
 └── dist\
-    └── MagicTVBox.exe (180-220 MB)
+    └── VideoForge.exe (180-220 MB)
 ```
 
 ---
@@ -153,7 +153,7 @@ When the build completes, you should see:
 
 ```
 ================================================================================
-MagicTVBox Executable Build Script
+VideoForge Executable Build Script
 ================================================================================
 
 Project root: C:\Users\Admin\Documents\GitHub\-FFmpeg-Video-Automation-Dashboard
@@ -166,7 +166,7 @@ Working directory: C:\Users\Admin\Documents\GitHub\-FFmpeg-Video-Automation-Dash
 Starting PyInstaller build...
 ------------------------------------------------------------
 
-Building with spec file: MagicTVBox.spec
+Building with spec file: VideoForge.spec
 
 [LOTS OF OUTPUT]
 ...
@@ -175,12 +175,12 @@ Building with spec file: MagicTVBox.spec
 Build Complete!
 ================================================================================
 
-[OK] Executable created: dist\MagicTVBox.exe
+[OK] Executable created: dist\VideoForge.exe
   Size: 197.3 MB
   [OK] Size is within target (<500MB)
 
 Next steps:
-  1. Test the executable: dist\\MagicTVBox.exe
+  1. Test the executable: dist\\VideoForge.exe
   2. Test on a machine without Python installed
   3. Verify all features work correctly
 ================================================================================
@@ -193,7 +193,7 @@ Next steps:
 ### Test 1: Launch Test
 
 ```cmd
-dist\MagicTVBox.exe
+dist\VideoForge.exe
 ```
 
 **Expected:**
@@ -347,12 +347,12 @@ After successful build and testing:
 
 ```
 dist/
-└── MagicTVBox.exe (180-220 MB)
+└── VideoForge.exe (180-220 MB)
 ```
 
 ### Distribution Options:
 
-1. **Direct download**: Upload MagicTVBox.exe to server
+1. **Direct download**: Upload VideoForge.exe to server
 2. **Installer**: Create simple NSIS installer (optional)
 3. **ZIP**: Compress with README (recommended)
 4. **GitHub Release**: Tag release, create downloadable asset
@@ -361,7 +361,7 @@ dist/
 
 ## 🎉 CONCLUSION
 
-Your MagicTVBox application is **fully ready for packaging**!
+Your VideoForge application is **fully ready for packaging**!
 
 All critical features implemented:
 - ✅ Standalone executable configuration
