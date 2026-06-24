@@ -1,232 +1,143 @@
-# MagicTVBox - FFmpeg Video Automation Dashboard
+# VideoForge
 
-A modern Python desktop application for automating video processing tasks using FFmpeg. Convert your Bash scripts into a user-friendly dashboard for batch processing TV series, removing logos, and formatting videos for iOS/TV boxes.
+<p align="center">
+  <em>A desktop dashboard that turns FFmpeg into a point-and-click workflow — batch-process TV recordings with automatic logo detection, flexible trimming, and parallel encoding.</em>
+</p>
 
-## Features
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/python-3.8%2B-blue">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
+  <img alt="FFmpeg" src="https://img.shields.io/badge/FFmpeg-4.0%2B-black">
+  <img alt="OpenCV" src="https://img.shields.io/badge/OpenCV-classical%20CV-blueviolet">
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-pytest-brightgreen">
+</p>
 
-- **Batch Processing**: Process multiple video files with the same settings
-- **Single File Processing**: Process individual video files
-- **Cut Last 5 Minutes**: Automatically calculate and cut the last 5 minutes from videos
-- **Delogo Filter**: Remove logos with configurable position and size
-- **Real-time Progress**: Track processing progress with visual feedback
-- **Queue System**: Process files sequentially with status tracking
-- **Logs Panel**: View FFmpeg output and processing logs
-- **Dark Theme**: Modern, dashboard-style UI built with CustomTkinter
+---
+
+VideoForge is a Python desktop application (built with CustomTkinter) that wraps FFmpeg in a clean, dark-themed UI. Originally built to convert a pile of personal Bash scripts into a reusable tool, it now supports automatic watermark/logo detection, flexible cut units, multi-task batch processing, parallel encoding, and packaging to a standalone Windows `.exe`.
+
+## Highlights
+
+- **Automatic logo detection** — a temporal-stability computer-vision pipeline (OpenCV + NumPy) samples frames, computes per-pixel variance, and locates persistent watermarks automatically. Manual coordinate entry and an optional Google Cloud Vision detector are also available.
+- **Multi-task batch processing** — run several task tabs at once, each with its own files and settings, processed sequentially with live per-file progress.
+- **Parallel encoding** — a worker pool runs multiple FFmpeg encodes concurrently to use more of your CPU.
+- **Flexible trimming** — cut by **Time**, **Percent**, or **Frames**, including one-click "cut last N minutes".
+- **Drag-and-drop** — drop files straight into the UI (tkinterdnd2).
+- **Detection profiles & templates** — save reusable logo-detection profiles (`%APPDATA%/VideoForge/profiles`) and processing templates for recurring jobs.
+- **One-click `.exe`** — PyInstaller packaging ships a double-clickable Windows executable with no Python install required.
+
+## Screenshots
+
+Screenshots live in [`docs/screenshots/`](docs/screenshots). *(Add `main-window.png`, `batch-processor.png`, etc. here.)*
 
 ## Tech Stack
 
-- **Python 3.8+**: Core programming language
-- **CustomTkinter**: Modern, customizable Tkinter-based GUI framework
-- **ffmpeg-python**: Python wrapper for FFmpeg (optional, falls back to subprocess)
-- **Pillow**: Image processing library (required by CustomTkinter)
+| Area | Technology |
+| --- | --- |
+| Language | Python 3.8+ |
+| GUI | CustomTkinter, tkinterdnd2 |
+| Video engine | FFmpeg 4.0+ (`ffmpeg-python` / subprocess) |
+| Logo detection | OpenCV + NumPy (classical CV); optional Google Cloud Vision |
+| Imaging | Pillow |
+| Packaging | PyInstaller |
+| Tests / lint | pytest, pytest-cov, ruff |
 
 ## Prerequisites
 
-- Python 3.8 or higher
-- FFmpeg installed and available in your system PATH
+- Python 3.8+
+- **FFmpeg** installed and on your `PATH`
 
-### Installing FFmpeg
-
-**Windows:**
-- Download from [FFmpeg website](https://ffmpeg.org/download.html)
-- Extract and add to PATH, or use a package manager like Chocolatey: `choco install ffmpeg`
-
-**macOS:**
 ```bash
+# macOS
 brew install ffmpeg
-```
-
-**Linux:**
-```bash
 # Debian/Ubuntu
 sudo apt install ffmpeg
-
-# RHEL/CentOS
-sudo yum install ffmpeg
+# Windows: download from ffmpeg.org, or: choco install ffmpeg
 ```
+
+Verify with `ffmpeg -version`.
 
 ## Installation
 
-1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd -FFmpeg-Video-Automation-Dashboard
-```
-
-2. Create a virtual environment (recommended):
-```bash
-# Windows
+cd VideoForge
 python -m venv venv
-venv\Scripts\activate
-
-# macOS/Linux
-python3 -m venv venv
-source venv/bin/activate
-```
-
-3. Install dependencies:
-```bash
+# Windows: venv\Scripts\activate   |   macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Or install using pip:
-```bash
-pip install customtkinter Pillow ffmpeg-python
-```
+For the optional Cloud Vision logo detector: `pip install -r requirements-ai.txt` and set `GOOGLE_APPLICATION_CREDENTIALS` (see [`docs/LOGO_DETECTION_AI_OPTIONS.md`](docs/LOGO_DETECTION_AI_OPTIONS.md)).
 
-## Running the Application
-
-### Development Mode
-
-Simply run the main Python file:
+## Running
 
 ```bash
 python main.py
 ```
 
-Or if installed as a package:
-
-```bash
-magic-tv-box
-```
+Or, after `pip install -e .`, use the `videoforge` console command.
 
 ## Usage
 
-### Batch Processing
+1. **Batch Processor** — add task tabs, drop or select files, pick an output folder, enable options (trim / cut-units / delogo / auto-detect), and start.
+2. **Single File** — process one file with the same options.
+3. **Logs** — live FFmpeg output and processing messages.
+4. **Settings** — FFmpeg encoding details and app info.
 
-1. Navigate to **Batch Processor** in the sidebar
-2. Configure processing options:
-   - Enable/disable "Cut Last 5 Minutes"
-   - Enable/disable "Apply Delogo Filter" (with X, Y, Width, Height parameters)
-3. Click **Select Files** to choose video files to process
-4. Click **Select Folder** to choose the output directory
-5. Click **Start Processing** to begin
+### Encoding defaults
 
-The application will process files sequentially, showing progress for each file in real-time.
+H.264 (`libx264`, preset `fast`, CRF 23, YUV420P) + AAC 192k + faststart — a quality/size balance tuned for iOS devices and TV boxes.
 
-### Single File Processing
+## Packaging a Windows executable
 
-1. Navigate to **Single File** in the sidebar
-2. Configure processing options
-3. Select a video file and output folder
-4. Click **Process Video**
+```bash
+pyinstaller --clean --noconfirm src/packaging/VideoForge.spec
+# → dist/VideoForge.exe
+```
 
-### Viewing Logs
+See [`docs/BUILDING.md`](docs/BUILDING.md) and [`docs/PACKAGE_GUIDE.md`](docs/PACKAGE_GUIDE.md) for full details.
 
-Navigate to **Logs** in the sidebar to view FFmpeg output and processing messages in real-time. You can clear logs using the "Clear Logs" button.
+## Testing & lint
 
-### Settings
+```bash
+pytest                 # full suite (unit + integration)
+ruff check .           # lint
+```
 
-The Settings panel displays information about FFmpeg encoding settings and application information.
-
-## Processing Options
-
-### Cut Last 5 Minutes
-Automatically calculates the video duration and cuts the last 5 minutes (300 seconds) from the video.
-
-### Delogo Filter
-Removes logos from videos. Default parameters:
-- X: 1635
-- Y: 240
-- Width: 176
-- Height: 147
-
-You can adjust these values in the UI to match your video's logo position.
-
-### Encoding Settings
-The application uses the following FFmpeg settings (hardcoded for compatibility):
-- Video Codec: H.264 (libx264)
-- Preset: fast
-- CRF: 23
-- Pixel Format: YUV420P
-- Audio Codec: AAC
-- Audio Bitrate: 192k
-- Faststart: Enabled (for web streaming)
-
-These settings provide a good balance between quality and file size, ensuring compatibility with iOS devices and TV boxes.
+Integration tests run real FFmpeg; ensure FFmpeg is on your `PATH`.
 
 ## Project Structure
 
 ```
-├── main.py                 # Application entry point
-├── requirements.txt        # Python dependencies
-├── setup.py               # Package setup script
-├── pyproject.toml         # Modern Python project configuration
-├── src/
-│   ├── __init__.py
-│   ├── state.py           # Application state management
-│   ├── video_processor.py # FFmpeg processing logic
-│   └── ui/
-│       ├── __init__.py
-│       ├── batch_processor.py    # Batch processing UI
-│       ├── single_processor.py  # Single file processing UI
-│       ├── logs_panel.py         # Logs display UI
-│       ├── settings_panel.py     # Settings UI
-│       └── main_window.py        # Main window (placeholder)
+main.py                      # Entry point — VideoForgeApp
+src/
+├── video_processor.py       # FFmpeg orchestration & filters
+├── parallel_processor.py    # Concurrent encode worker pool
+├── logo_detector_temporal.py# Temporal-stability CV detector (default)
+├── logo_detector_vision.py  # Optional Google Cloud Vision detector
+├── logo_detector.py         # Manual-coordinate detector
+├── logo_detection_utils.py  # Shared CV filter helpers
+├── detection_profiles.py    # JSON logo-detection profiles
+├── templates.py             # Processing-profile templates
+├── data_models.py           # Config / profile / template dataclasses
+├── state.py                 # Application state container
+├── exceptions.py            # Domain exception hierarchy
+├── packaging/               # PyInstaller spec + build script
+└── ui/                      # CustomTkinter frames (batch, single, logs, settings, drag-drop)
+tests/                       # Unit + integration tests
+docs/                        # Guides and design specs
+specs/                       # Historical feature design records
 ```
 
-## Building/Packaging
+## Documentation
 
-### Install as Package
-
-```bash
-pip install -e .
-```
-
-This installs the package in editable mode, allowing you to run `magic-tv-box` from anywhere.
-
-### Create Distribution Package
-
-```bash
-python setup.py sdist bdist_wheel
-```
-
-This creates distribution packages in the `dist/` directory.
-
-## Troubleshooting
-
-### FFmpeg Not Found
-
-If you get an error that FFmpeg is not found:
-1. Ensure FFmpeg is installed
-2. Verify it's in your system PATH by running `ffmpeg -version` in a terminal
-3. On Windows, you may need to restart your terminal/IDE after adding FFmpeg to PATH
-
-### Import Errors
-
-If you encounter import errors:
-1. Ensure you're using Python 3.8 or higher
-2. Make sure all dependencies are installed: `pip install -r requirements.txt`
-3. Verify you're in the correct virtual environment (if using one)
-
-### GUI Not Displaying
-
-If the GUI doesn't appear:
-1. Check that CustomTkinter is properly installed
-2. Ensure you're running the script, not importing it
-3. Check for error messages in the terminal
-
-## Development
-
-### Code Style
-
-The project follows Python PEP 8 style guidelines. Key principles:
-- Use type hints where possible
-- Keep functions focused and small
-- Use meaningful variable and function names
-- Add docstrings to classes and functions
-
-### Adding Features
-
-1. State management is handled in `src/state.py`
-2. FFmpeg processing logic is in `src/video_processor.py`
-3. UI components are in `src/ui/`
-4. Main application logic is in `main.py`
+- [`docs/BUILDING.md`](docs/BUILDING.md) — building the standalone executable
+- [`docs/PACKAGE_GUIDE.md`](docs/PACKAGE_GUIDE.md) — packaging walkthrough
+- [`docs/TRIM_MODES_GUIDE.md`](docs/TRIM_MODES_GUIDE.md) — trim modes reference
+- [`docs/LOGO_DETECTION_AI_OPTIONS.md`](docs/LOGO_DETECTION_AI_OPTIONS.md) — detection methods & Cloud Vision setup
+- [`specs/`](specs) — historical design documents for each feature
 
 ## License
 
-MIT
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+[MIT](LICENSE)
