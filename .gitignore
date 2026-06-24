@@ -1,14 +1,31 @@
-# Dependencies
-node_modules/
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.mypy_cache/
 
-# Build outputs
-dist/
-dist-electron/
+# Build / packaging
 build/
-*.log
+dist/
+*.spec.bak
+*.exe
+*.dll
+*.pyd
+
+# Local agent / editor config (keep local, do not track)
+.claude/settings.local.json
+.opencode/
 
 # Environment
 .env
@@ -25,34 +42,6 @@ build/
 # OS
 .DS_Store
 Thumbs.db
-
-# Electron
-out/
-release/
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-.venv/
-venv/
-env/
-ENV/
-*.egg-info/
-.pytest_cache/
-.coverage
-htmlcov/
-*.pyc
-
-# PyInstaller
-build/
-dist/
-*.spec.bak
-*.exe
-*.dll
-*.pyd
 
 # Project-specific
 .specify/memory/agent-context.md
