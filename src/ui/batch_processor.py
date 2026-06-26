@@ -146,8 +146,8 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         # === PROCESSING PROFILE SECTION ===
         self._create_profile_section()
 
-        # === LOGO DETECTION SECTION (Phase 4) ===
-        self._create_detection_section()
+        # === LOGO DETECTION SECTION (hidden — will be re-enabled in future release) ===
+        # self._create_detection_section()
 
         # === PROCESSING OPTIONS (Delogo) ===
         self._create_delogo_section()
