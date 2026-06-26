@@ -1384,6 +1384,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
 
     def _apply_logo_rect(self, x: int, y: int, w: int, h: int):
         """Fill the delogo X/Y/W/H fields and enable the filter."""
+        print(f"[LogoPicker] Applying: x={x}, y={y}, w={w}, h={h}")
         self.state.delogo_params.x = x
         self.state.delogo_params.y = y
         self.state.delogo_params.w = w
@@ -1396,6 +1397,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         self.state.apply_delogo = True
         self.delogo_checkbox.select()
         self.delogo_params_frame.pack(fill="x", padx=16, pady=(0, 16))
+        print(f"[LogoPicker] Done. State now: {self.state.delogo_params}")
 
     def _on_detect_logo(self):
         """Start logo detection on the first video in queue"""

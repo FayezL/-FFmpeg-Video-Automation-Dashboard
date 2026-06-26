@@ -18,13 +18,16 @@ from src.logo_position_utils import (
 
 
 class LogoPickerDialog(ctk.CTkToplevel):
-    """A modal dialog that shows a video frame and lets the user draw a
+    """A dialog that shows a video frame and lets the user draw a
     rectangle over the logo by clicking and dragging.
 
     When the user clicks "Apply", the callback ``on_apply(x, y, w, h)`` is
-    called with the coordinates in the ORIGINAL video resolution (not the
-    scaled-down display resolution).
+    called with the coordinates in the ORIGINAL video resolution.
     """
+
+    # Hard cap on canvas height so the button bar is always visible.
+    _MAX_DISPLAY_W = 900
+    _MAX_DISPLAY_H = 480
 
     def __init__(
         self,
@@ -36,7 +39,6 @@ class LogoPickerDialog(ctk.CTkToplevel):
         super().__init__(parent)
         self.title("Select Logo Area")
         self.transient(parent)
-        self.grab_set()
 
         self._on_apply = on_apply
         self._scale = 1.0
@@ -44,6 +46,7 @@ class LogoPickerDialog(ctk.CTkToplevel):
         self._start_x = 0
         self._start_y = 0
         self._photo = None  # keep reference to prevent GC
+        self._current_rect: Optional[Tuple[int, int, int, int]] = None
 
         self._load_frame(video_path)
         if self._photo is None:
@@ -60,7 +63,7 @@ class LogoPickerDialog(ctk.CTkToplevel):
         sw = self.winfo_screenwidth()
         sh = self.winfo_screenheight()
         x = (sw - self.winfo_width()) // 2
-        y = (sh - self.winfo_height()) // 2
+        y = max(0, (sh - self.winfo_height()) // 2 - 40)
         self.geometry(f"+{x}+{y}")
 
     # ─── Setup ──────────────────────────────────────────────────────────
@@ -71,7 +74,9 @@ class LogoPickerDialog(ctk.CTkToplevel):
         if frame is None:
             return
 
-        scaled, scale = scale_frame_for_display(frame, max_width=900, max_height=600)
+        scaled, scale = scale_frame_for_display(
+            frame, max_width=self._MAX_DISPLAY_W, max_height=self._MAX_DISPLAY_H
+        )
         self._scale = scale
 
         # BGR → RGB → PIL → ImageTk
@@ -82,33 +87,35 @@ class LogoPickerDialog(ctk.CTkToplevel):
         self._display_h = pil_img.height
 
     def _build_ui(self, initial_rect) -> None:
-        """Build the dialog UI."""
-        # ── Instructions ──
-        header = ctk.CTkFrame(self, fg_color="transparent")
-        header.pack(fill="x", padx=16, pady=(12, 4))
+        """Build the dialog UI — button bar on TOP so it's always visible."""
+        # ── TOP: instructions + coordinates ──
+        top_bar = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=8)
+        top_bar.pack(fill="x", padx=12, pady=(12, 4))
+
         ctk.CTkLabel(
-            header,
-            text="Click and drag over the logo, then click Apply",
-            font=ctk.CTkFont(size=13),
-        ).pack()
+            top_bar,
+            text="1. Click and drag over the logo    2. Click Apply",
+            font=ctk.CTkFont(size=13, weight="bold"),
+        ).pack(pady=(8, 2))
 
         self._coord_label = ctk.CTkLabel(
-            header,
-            text="",
-            font=ctk.CTkFont(size=12),
+            top_bar,
+            text="No selection yet",
+            font=ctk.CTkFont(size=13),
             text_color="#60a5fa",
         )
-        self._coord_label.pack(pady=(2, 0))
+        self._coord_label.pack(pady=(0, 8))
 
         # ── Canvas with the frame ──
         self._canvas = ctk.CTkCanvas(
             self,
             width=self._display_w,
             height=self._display_h,
-            highlightthickness=0,
+            highlightthickness=1,
+            highlightbackground="#334155",
             bg="#0f172a",
         )
-        self._canvas.pack(padx=16, pady=8)
+        self._canvas.pack(padx=12, pady=4)
         self._canvas.create_image(0, 0, anchor="nw", image=self._photo)
 
         # Bind mouse events
@@ -120,20 +127,19 @@ class LogoPickerDialog(ctk.CTkToplevel):
         if initial_rect:
             self._draw_initial_rect(initial_rect)
 
-        # ── Buttons ──
+        # ── BOTTOM: Apply + Cancel ──
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
-        btn_frame.pack(fill="x", padx=16, pady=(0, 16))
+        btn_frame.pack(fill="x", padx=12, pady=(4, 12))
 
         self._apply_btn = ctk.CTkButton(
             btn_frame,
             text="✓ Apply Coordinates",
             command=self._on_apply_clicked,
-            width=160,
-            height=32,
+            width=180,
+            height=36,
             font=ctk.CTkFont(size=14, weight="bold"),
             fg_color="#10B981",
             hover_color="#059669",
-            state="disabled",
         )
         self._apply_btn.pack(side="right", padx=(8, 0))
 
@@ -142,6 +148,7 @@ class LogoPickerDialog(ctk.CTkToplevel):
             text="Cancel",
             command=self.destroy,
             width=100,
+            height=36,
             fg_color="#475569",
             hover_color="#334155",
         ).pack(side="right")
@@ -159,7 +166,6 @@ class LogoPickerDialog(ctk.CTkToplevel):
         )
         self._current_rect = (x, y, w, h)
         self._coord_label.configure(text=f"X={x}  Y={y}  W={w}  H={h}")
-        self._apply_btn.configure(state="normal")
 
     # ─── Mouse handlers ─────────────────────────────────────────────────
 
@@ -176,15 +182,10 @@ class LogoPickerDialog(ctk.CTkToplevel):
     def _on_drag(self, event) -> None:
         if not self._rect_id:
             return
-        # Clamp within canvas bounds
         x = max(0, min(event.x, self._display_w))
         y = max(0, min(event.y, self._display_h))
         self._canvas.coords(self._rect_id, self._start_x, self._start_y, x, y)
-
-        # Update coordinate label (convert to original resolution)
-        ox, oy, ow, oh = self._calc_original_rect(
-            self._start_x, self._start_y, x, y
-        )
+        ox, oy, ow, oh = self._calc_original_rect(self._start_x, self._start_y, x, y)
         self._coord_label.configure(text=f"X={ox}  Y={oy}  W={ow}  H={oh}")
 
     def _on_release(self, event) -> None:
@@ -195,14 +196,12 @@ class LogoPickerDialog(ctk.CTkToplevel):
 
         ox, oy, ow, oh = self._calc_original_rect(self._start_x, self._start_y, x, y)
         if ow < 2 or oh < 2:
-            # Too small — treat as a click, not a drag
             self._canvas.delete(self._rect_id)
             self._rect_id = None
             return
 
         self._current_rect = (ox, oy, ow, oh)
         self._coord_label.configure(text=f"X={ox}  Y={oy}  W={ow}  H={oh}")
-        self._apply_btn.configure(state="normal")
 
     # ─── Helpers ────────────────────────────────────────────────────────
 
@@ -215,10 +214,21 @@ class LogoPickerDialog(ctk.CTkToplevel):
         return x, y, w, h
 
     def _on_apply_clicked(self) -> None:
-        """Release grab, fire callback, then close on the next event tick."""
-        if not hasattr(self, "_current_rect"):
+        """Fire callback with current rectangle, then close."""
+        if self._current_rect is None:
+            messagebox.showinfo(
+                "No Selection",
+                "Click and drag over the logo first.",
+                parent=self,
+            )
             return
-        self.grab_release()
-        self._on_apply(*self._current_rect)
-        self._coord_label.configure(text="✓ Applied!")
-        self.after(150, self.destroy)
+        try:
+            self._on_apply(*self._current_rect)
+        except Exception as e:
+            messagebox.showerror(
+                "Error",
+                f"Failed to apply coordinates: {e}",
+                parent=self,
+            )
+            return
+        self.destroy()
