@@ -88,7 +88,7 @@ class LogoPickerDialog(ctk.CTkToplevel):
         header.pack(fill="x", padx=16, pady=(12, 4))
         ctk.CTkLabel(
             header,
-            text="Click and drag over the logo to select it",
+            text="Click and drag over the logo — coordinates apply on release",
             font=ctk.CTkFont(size=13),
         ).pack()
 
@@ -199,8 +199,11 @@ class LogoPickerDialog(ctk.CTkToplevel):
             return
 
         self._current_rect = (ox, oy, ow, oh)
-        self._coord_label.configure(text=f"X={ox}  Y={oy}  W={ow}  H={oh}")
+        self._coord_label.configure(text=f"X={ox}  Y={oy}  W={ow}  H={oh}  ✓ Applied!")
         self._apply_btn.configure(state="normal")
+
+        # Auto-apply on release — user draws the rectangle and it applies immediately.
+        self._on_apply_clicked()
 
     # ─── Helpers ────────────────────────────────────────────────────────
 
