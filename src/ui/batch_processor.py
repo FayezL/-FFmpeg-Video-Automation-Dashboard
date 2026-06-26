@@ -14,8 +14,10 @@ import glob
 from src.state import AppState, ProcessingFile, FileStatus, CutMode, CutUnit
 from src.video_processor import VideoProcessor
 from src.ui.drag_drop import DragDropHandler
+from src.ui.logo_picker import LogoPickerDialog
 from src.logo_detector import LogoDetector
 from src.logo_detector_temporal import TemporalLogoDetector
+from src.logo_position_utils import parse_logo_coordinates
 from src.data_models import DetectionConfig, DetectionSession
 
 try:
@@ -759,6 +761,45 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             e.bind("<KeyRelease>", lambda ev, idx=i: self._on_delogo_param_change(idx))
             self.delogo_inputs.append(e)
 
+        # ── Quick-position tools row ──
+        tools_frame = ctk.CTkFrame(self.delogo_params_frame, fg_color="transparent")
+        tools_frame.pack(fill="x", pady=(12, 0))
+
+        self.pick_logo_btn = ctk.CTkButton(
+            tools_frame,
+            text="🖼  Pick from Video",
+            command=self._on_pick_logo_area,
+            width=140,
+            height=28,
+            font=ctk.CTkFont(size=12),
+            fg_color="#3b82f6",
+            hover_color="#2563eb",
+        )
+        self.pick_logo_btn.pack(side="left", padx=(0, 12))
+
+        ctk.CTkLabel(
+            tools_frame, text="or paste coords:",
+            font=ctk.CTkFont(size=11), text_color="#64748b",
+        ).pack(side="left", padx=(0, 4))
+
+        self.paste_coords_entry = ctk.CTkEntry(
+            tools_frame, width=160, height=28,
+            placeholder_text="x, y, w, h",
+        )
+        self.paste_coords_entry.pack(side="left", padx=(0, 4))
+        self.paste_coords_entry.bind("<Return>", lambda ev: self._on_parse_pasted_coords())
+
+        self.parse_coords_btn = ctk.CTkButton(
+            tools_frame,
+            text="Parse",
+            command=self._on_parse_pasted_coords,
+            width=60, height=28,
+            font=ctk.CTkFont(size=12),
+            fg_color="#64748b",
+            hover_color="#475569",
+        )
+        self.parse_coords_btn.pack(side="left")
+
         if not self.state.apply_delogo:
             self.delogo_params_frame.pack_forget()
 
@@ -1300,6 +1341,61 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
                 p.h = v
         except ValueError:
             pass
+
+    def _on_pick_logo_area(self):
+        """Open the visual logo picker dialog."""
+        files = self._files()
+        if not files:
+            messagebox.showwarning(
+                "No Video Selected",
+                "Add a video file first so the picker can show a frame.",
+            )
+            return
+        video_path = files[0].path
+        initial = (
+            self.state.delogo_params.x,
+            self.state.delogo_params.y,
+            self.state.delogo_params.w,
+            self.state.delogo_params.h,
+        )
+        LogoPickerDialog(
+            parent=self,
+            video_path=video_path,
+            on_apply=self._apply_logo_rect,
+            initial_rect=initial,
+        )
+
+    def _on_parse_pasted_coords(self):
+        """Parse pasted coordinate text and fill the delogo fields."""
+        text = self.paste_coords_entry.get().strip()
+        if not text:
+            return
+        parsed = parse_logo_coordinates(text)
+        if parsed is None:
+            messagebox.showwarning(
+                "Could Not Parse",
+                "Paste 4 numbers in one of these formats:\n"
+                "  100, 200, 50, 30\n"
+                "  x=100 y=200 w=50 h=30",
+            )
+            return
+        self._apply_logo_rect(*parsed)
+        self.paste_coords_entry.delete(0, "end")
+
+    def _apply_logo_rect(self, x: int, y: int, w: int, h: int):
+        """Fill the delogo X/Y/W/H fields and enable the filter."""
+        self.state.delogo_params.x = x
+        self.state.delogo_params.y = y
+        self.state.delogo_params.w = w
+        self.state.delogo_params.h = h
+
+        for idx, val in enumerate([x, y, w, h]):
+            self.delogo_inputs[idx].delete(0, "end")
+            self.delogo_inputs[idx].insert(0, str(val))
+
+        self.state.apply_delogo = True
+        self.delogo_checkbox.select()
+        self.delogo_params_frame.pack(fill="x", padx=16, pady=(0, 16))
 
     def _on_detect_logo(self):
         """Start logo detection on the first video in queue"""
