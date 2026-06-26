@@ -4,8 +4,6 @@ Integration test for application startup time
 Tests that the application launches within acceptable time limits.
 """
 
-import time
-import subprocess
 from pathlib import Path
 
 

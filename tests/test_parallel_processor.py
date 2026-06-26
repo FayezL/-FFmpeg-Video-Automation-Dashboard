@@ -7,9 +7,9 @@ processing works correctly with thread pooling and proper resource management.
 
 import pytest
 import time
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 from src.parallel_processor import ParallelProcessor
-from src.state import AppState, ProcessingFile, FileStatus, ParallelProcessingConfig
+from src.state import AppState, ProcessingFile, ParallelProcessingConfig
 
 
 class TestParallelProcessingConfig:

@@ -5,7 +5,6 @@ FFmpeg video processing logic
 import subprocess
 import json
 import os
-from pathlib import Path
 from typing import Optional, Dict, Callable, List, Tuple
 import threading
 
@@ -16,7 +15,7 @@ try:
 except ImportError:
     HAS_FFMPEG_PYTHON = False
 
-from src.state import AppState, ProcessingFile, FileStatus, CutMode, CutUnit
+from src.state import AppState, ProcessingFile, FileStatus, CutUnit
 
 
 def convert_cut_value_to_seconds(

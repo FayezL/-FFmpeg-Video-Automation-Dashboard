@@ -5,7 +5,6 @@ Application state management
 from typing import List, Dict, Optional, Callable, Any
 from dataclasses import dataclass, field
 from enum import Enum
-import os
 import multiprocessing
 
 
@@ -110,7 +109,7 @@ class ParallelProcessingConfig:
             cores = multiprocessing.cpu_count()
             optimal = max(1, min(4, (cores - 1) // 2))
             return optimal
-        except:
+        except Exception:
             return 2  # Safe default
 
     def estimate_memory_usage(self) -> int:
@@ -329,9 +328,9 @@ class AppState:
     @property
     def cut_start_total_seconds(self) -> float:
         return (
-            (self.cut_start_hours_range * 3600)
-            + (self.cut_start_minutes_range * 60)
-            + self.cut_start_seconds_range
+            (self.cut_start_hours * 3600)
+            + (self.cut_start_minutes * 60)
+            + self.cut_start_seconds
         )
 
     @property

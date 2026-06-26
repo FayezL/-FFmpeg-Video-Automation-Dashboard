@@ -5,15 +5,11 @@ Python Desktop Application
 """
 
 import customtkinter as ctk
-import tkinter.filedialog as filedialog
-import threading
 import os
 import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import List, Optional, Dict
-import json
 
 # Single-instance check using file lock
 _lock_file = None
@@ -85,12 +81,12 @@ def _is_process_running(pid: int) -> bool:
 
 # Lazy imports for faster startup (T020)
 # These will be imported when first needed
-from src.video_processor import VideoProcessor
-from src.ui.batch_processor import BatchProcessorFrame
-from src.ui.single_processor import SingleProcessorFrame
-from src.ui.logs_panel import LogsPanel
-from src.ui.settings_panel import SettingsPanel
-from src.state import AppState
+from src.video_processor import VideoProcessor  # noqa: E402
+from src.ui.batch_processor import BatchProcessorFrame  # noqa: E402
+from src.ui.single_processor import SingleProcessorFrame  # noqa: E402
+from src.ui.logs_panel import LogsPanel  # noqa: E402
+from src.ui.settings_panel import SettingsPanel  # noqa: E402
+from src.state import AppState  # noqa: E402
 
 # Configure CustomTkinter
 ctk.set_appearance_mode("dark")
@@ -325,7 +321,7 @@ def main():
             lock_path = Path(tempfile.gettempdir()) / "VideoForge.lock"
             if lock_path.exists():
                 lock_path.unlink()
-        except:
+        except Exception:
             pass
 
 

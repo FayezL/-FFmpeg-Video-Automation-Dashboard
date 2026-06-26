@@ -88,7 +88,7 @@ class LogoPickerDialog(ctk.CTkToplevel):
         header.pack(fill="x", padx=16, pady=(12, 4))
         ctk.CTkLabel(
             header,
-            text="Click and drag over the logo — coordinates apply on release",
+            text="Click and drag over the logo, then click Apply",
             font=ctk.CTkFont(size=13),
         ).pack()
 
@@ -126,9 +126,11 @@ class LogoPickerDialog(ctk.CTkToplevel):
 
         self._apply_btn = ctk.CTkButton(
             btn_frame,
-            text="Apply",
+            text="✓ Apply Coordinates",
             command=self._on_apply_clicked,
-            width=100,
+            width=160,
+            height=32,
+            font=ctk.CTkFont(size=14, weight="bold"),
             fg_color="#10B981",
             hover_color="#059669",
             state="disabled",
@@ -199,11 +201,8 @@ class LogoPickerDialog(ctk.CTkToplevel):
             return
 
         self._current_rect = (ox, oy, ow, oh)
-        self._coord_label.configure(text=f"X={ox}  Y={oy}  W={ow}  H={oh}  ✓ Applied!")
+        self._coord_label.configure(text=f"X={ox}  Y={oy}  W={ow}  H={oh}")
         self._apply_btn.configure(state="normal")
-
-        # Auto-apply on release — user draws the rectangle and it applies immediately.
-        self._on_apply_clicked()
 
     # ─── Helpers ────────────────────────────────────────────────────────
 
@@ -216,6 +215,10 @@ class LogoPickerDialog(ctk.CTkToplevel):
         return x, y, w, h
 
     def _on_apply_clicked(self) -> None:
-        if hasattr(self, "_current_rect"):
-            self._on_apply(*self._current_rect)
-        self.destroy()
+        """Release grab, fire callback, then close on the next event tick."""
+        if not hasattr(self, "_current_rect"):
+            return
+        self.grab_release()
+        self._on_apply(*self._current_rect)
+        self._coord_label.configure(text="✓ Applied!")
+        self.after(150, self.destroy)

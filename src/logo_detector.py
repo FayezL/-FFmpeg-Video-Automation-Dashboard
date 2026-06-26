@@ -13,7 +13,6 @@ No deep learning required - fast and lightweight.
 import cv2
 import numpy as np
 from typing import List, Tuple, Optional, Callable
-from pathlib import Path
 
 from src.data_models import DetectionResult, DetectionConfig, DetectionSession
 from src.exceptions import VideoReadError, DetectionFailedError, DetectionCancelledError

@@ -487,8 +487,9 @@ class SingleProcessorFrame(ctk.CTkScrollableFrame):
             else:
                 self.after(0, lambda: self._on_complete(False, error_msg))
         except Exception as e:
-            self.state.add_log(f"Error: {str(e)}")
-            self.after(0, lambda: self._on_complete(False, str(e)))
+            err_msg = str(e)
+            self.state.add_log(f"Error: {err_msg}")
+            self.after(0, lambda: self._on_complete(False, err_msg))
 
     def _update_progress(self, percent: float):
         """Update progress bar"""

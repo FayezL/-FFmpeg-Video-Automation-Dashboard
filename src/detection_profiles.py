@@ -7,11 +7,11 @@ Profiles store detection settings and learned patterns for recurring logos.
 
 import json
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 from datetime import datetime
 import os
 
-from src.data_models import DetectionProfile, DetectionConfig, ProfileStatistics
+from src.data_models import DetectionProfile, DetectionConfig
 from src.exceptions import ProfileError
 
 

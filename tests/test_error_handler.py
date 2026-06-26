@@ -5,7 +5,6 @@ This module tests the ErrorMessageParser class, ensuring FFmpeg errors are
 correctly parsed and translated into user-friendly messages.
 """
 
-import pytest
 
 
 class TestErrorMessageParser:

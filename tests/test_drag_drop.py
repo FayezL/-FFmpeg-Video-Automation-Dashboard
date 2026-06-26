@@ -5,8 +5,6 @@ This module tests the DragDropHandler class for proper file filtering,
 folder recursion, and duplicate detection.
 """
 
-import pytest
-from pathlib import Path
 from src.ui.drag_drop import DragDropHandler
 
 

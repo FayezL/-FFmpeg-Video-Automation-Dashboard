@@ -6,11 +6,9 @@ and restore common processing configurations as named templates.
 """
 
 import json
-import os
 from dataclasses import dataclass, asdict
 from typing import Optional, List, Tuple, Dict, Any
 from pathlib import Path
-import time
 
 from src.state import CutMode
 
@@ -169,7 +167,7 @@ class TemplateManager:
                     name = data.get("name", file_path.stem)
                     description = data.get("description", "")
                     templates.append((name, description))
-            except:
+            except Exception:
                 # Skip invalid template files
                 continue
 

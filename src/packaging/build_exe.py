@@ -112,9 +112,9 @@ def main():
         print(f"  Size: {size_mb:.1f} MB")
 
         if size_mb > 500:
-            print(f"  [WARNING] Warning: Size exceeds 500MB target")
+            print("  [WARNING] Warning: Size exceeds 500MB target")
         else:
-            print(f"  [OK] Size is within target (<500MB)")
+            print("  [OK] Size is within target (<500MB)")
 
         print()
         print("Next steps:")

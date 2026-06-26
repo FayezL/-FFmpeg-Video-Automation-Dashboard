@@ -2,7 +2,6 @@
 Test UI validation logic for hours support
 """
 
-import pytest
 from src.state import AppState, CutMode
 
 

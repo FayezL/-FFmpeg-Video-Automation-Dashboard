@@ -5,8 +5,6 @@ This module tests the TemplateManager class and Template dataclass,
 ensuring templates can be saved, loaded, listed, and managed correctly.
 """
 
-import pytest
-from pathlib import Path
 
 
 class TestTemplate:

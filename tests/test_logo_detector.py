@@ -228,7 +228,7 @@ class TestTemporalConfigFields:
         """New temporal fields should have sensible defaults"""
         config = DetectionConfig()
         assert config.temporal_num_frames == 15
-        assert config.temporal_variance_threshold == 0.005
+        assert config.temporal_variance_threshold == 5.0
         assert config.temporal_skip_intro_frac == 0.02
         assert config.temporal_skip_outro_frac == 0.02
         assert config.temporal_min_region_pixels == 200
@@ -246,11 +246,11 @@ class TestTemporalConfigFields:
             DetectionConfig(temporal_num_frames=61).validate()
 
     def test_temporal_threshold_bounds(self):
-        """temporal_variance_threshold must be between 0 and 1"""
+        """temporal_variance_threshold must be between 0 and 10000"""
         with pytest.raises(AssertionError, match="temporal_variance_threshold"):
             DetectionConfig(temporal_variance_threshold=-0.01).validate()
         with pytest.raises(AssertionError, match="temporal_variance_threshold"):
-            DetectionConfig(temporal_variance_threshold=1.5).validate()
+            DetectionConfig(temporal_variance_threshold=50000).validate()
 
     def test_temporal_skip_bounds(self):
         """Skip fractions must be between 0 and 0.5"""

@@ -5,8 +5,6 @@ All tests are pure unit tests: no FFmpeg, no UI, no filesystem writes.
 Works for any batch size: 1 file, 30 episodes, 50+.
 """
 
-import pytest
-from unittest.mock import MagicMock
 from src.state import AppState
 from src.video_processor import VideoProcessor
 

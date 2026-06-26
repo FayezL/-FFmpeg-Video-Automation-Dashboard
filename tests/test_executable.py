@@ -4,8 +4,6 @@ Tests for executable build output
 These tests verify that the PyInstaller build produces a valid executable.
 """
 
-import os
-import subprocess
 from pathlib import Path
 
 

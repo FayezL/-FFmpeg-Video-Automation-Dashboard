@@ -5,7 +5,6 @@ This module tests the VideoMetadataExtractor class, ensuring video metadata
 is correctly extracted, cached, and validated against processing profiles.
 """
 
-import pytest
 
 
 class TestVideoMetadataExtractor:

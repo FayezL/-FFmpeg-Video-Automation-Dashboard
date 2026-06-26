@@ -5,7 +5,6 @@ This module tests the FilterChainBuilder class and filter-related functionality,
 ensuring FFmpeg filter strings are correctly built and validated.
 """
 
-import pytest
 
 
 class TestFilterChainBuilder:

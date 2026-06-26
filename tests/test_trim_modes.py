@@ -4,7 +4,6 @@ Tests for video trim/cut modes with hours support.
 Validates all trim mode calculations are correct.
 """
 
-import pytest
 from src.state import AppState, CutMode
 
 
@@ -191,7 +190,6 @@ class TestTrimScenarios:
         state.cut_mode = CutMode.CUT_RANGE
 
         # For a 2-hour (7200s) movie
-        total_duration = 7200.0
 
         # Start at 1 minute 30 seconds (skip opening)
         state.cut_start_hours = 0.0

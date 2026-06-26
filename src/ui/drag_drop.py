@@ -5,8 +5,7 @@ This module provides drag-and-drop functionality for video files,
 with automatic folder recursion and video file filtering.
 """
 
-import os
-from typing import List, Callable, Optional
+from typing import List, Callable
 from pathlib import Path
 
 
@@ -31,7 +30,7 @@ class DragDropHandler:
 
         # Try to import tkinterdnd2
         try:
-            from tkinterdnd2 import DND_FILES, TkinterDnD
+            from tkinterdnd2 import DND_FILES  # noqa: F401 (TkinterDnD used as side-effect import)
             self._has_tkdnd = True
             self._dnd_files = DND_FILES
         except ImportError:
@@ -103,7 +102,7 @@ class DragDropHandler:
             self.widget.dnd_unbind('<<Drop>>')
             self.widget.dnd_unbind('<<DragEnter>>')
             self.widget.dnd_unbind('<<DragLeave>>')
-        except:
+        except Exception:
             pass
 
     def _handle_drag_enter(self, event) -> str:

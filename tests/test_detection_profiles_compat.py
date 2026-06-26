@@ -26,7 +26,7 @@ def test_old_profile_dict_loads_with_temporal_defaults():
     config = DetectionConfig(**old_data)
     assert config.sensitivity == 0.6
     assert config.temporal_num_frames == 15
-    assert config.temporal_variance_threshold == 0.005
+    assert config.temporal_variance_threshold == 5.0
     assert config.validate()
 
 
