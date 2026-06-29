@@ -386,6 +386,10 @@ class VideoProcessor:
 
         # Encoding settings from profile
         cmd.extend(self._build_ffmpeg_cmd_params(output_path))
+
+        # Limit threads per FFmpeg process to prevent CPU saturation
+        cmd.extend(["-threads", str(self.state.ffmpeg_threads)])
+
         cmd.extend(["-y"])  # Overwrite output
 
         # Faststart for MP4 (from profile)
@@ -413,12 +417,16 @@ class VideoProcessor:
         output_lines: List[str] = []
 
         try:
+            creationflags = 0
+            if os.name == "nt" and self.state.process_priority == "low":
+                creationflags = subprocess.BELOW_NORMAL_PRIORITY_CLASS
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 universal_newlines=True,
                 bufsize=1,
+                creationflags=creationflags,
             )
         except FileNotFoundError:
             return False, (

@@ -274,6 +274,12 @@ class AppState:
         self.parallel_config: ParallelProcessingConfig = ParallelProcessingConfig()
         self.active_processes: List[str] = []
 
+        # CPU usage controls — prevent FFmpeg from saturating all cores.
+        # ffmpeg_threads caps threads PER ffmpeg process (passed via -threads).
+        # process_priority sets the OS scheduling priority ("low" or "normal").
+        self.ffmpeg_threads: int = 2
+        self.process_priority: str = "low"
+
         self.detected_encoders: List[HardwareEncoder] = []
         self.use_hardware_encoding: bool = False
         self.selected_encoder: Optional[HardwareEncoder] = None
