@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python&logoColor=white)](https://python.org)
 [![FFmpeg](https://img.shields.io/badge/FFmpeg-4.0%2B-007808?logo=ffmpeg&logoColor=white)](https://ffmpeg.org)
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.8%2B-5C3EE8?logo=opencv&logoColor=white)](https://opencv.org)
-[![Tests](https://img.shields.io/badge/tests-205%20passed-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-202%20passed-brightgreen)]()
 [![Coverage](https://img.shields.io/badge/ruff-0%20errors-success)]()
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)]()
@@ -153,7 +153,7 @@ VideoForge's parallel worker pool delivers measurable speedups over sequential p
 | **Logo Detection** | OpenCV + NumPy | Classical CV — no ML model weights needed |
 | **Imaging** | Pillow | Frame extraction for logo picker |
 | **Packaging** | PyInstaller 6.x | Standalone `.exe` with bundled FFmpeg |
-| **Testing** | pytest + pytest-cov | 205 tests (unit + integration) |
+| **Testing** | pytest + pytest-cov | 202 tests (unit + integration) |
 | **Linting** | ruff | Zero errors enforced |
 
 ---
@@ -253,7 +253,7 @@ ruff check .
 
 | Metric | Value |
 |---|---|
-| Test functions | **205 passed**, 1 skipped |
+| Test functions | **202 passed**, 1 skipped |
 | Test files | 23 (19 unit + 4 integration) |
 | Lines of test code | ~2,583 |
 | Lint errors | **0** |
@@ -302,7 +302,7 @@ This project demonstrates several skills relevant to professional software engin
 - **Classical Computer Vision** — designed and implemented a temporal-variance logo-detection algorithm from scratch using NumPy array operations and OpenCV morphology, replacing a legacy edge-based detector that produced excessive false positives
 - **Concurrent Processing** — built a thread-safe worker pool with queue-based task distribution, graceful shutdown, and active-process tracking
 - **Subprocess Orchestration** — real-time FFmpeg progress parsing via stderr regex monitoring, dual execution paths (ffmpeg-python + raw subprocess) with automatic fallback
-- **Test-Driven Development** — 205 tests including integration tests that verify actual FFmpeg output, and synthetic-frame CV tests that run deterministically without video files
+- **Test-Driven Development** — 202 tests including integration tests that verify actual FFmpeg output, and synthetic-frame CV tests that run deterministically without video files
 - **Cross-Platform Packaging** — PyInstaller spec that bundles FFmpeg, applies UPX compression, and ships a double-clickable `.exe` with no runtime dependencies
 - **Clean Architecture** — single-responsibility modules, domain-specific exception hierarchy, pub/sub logging, and a central state container with computed properties
 
