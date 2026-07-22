@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python&logoColor=white)](https://python.org)
 [![FFmpeg](https://img.shields.io/badge/FFmpeg-4.0%2B-007808?logo=ffmpeg&logoColor=white)](https://ffmpeg.org)
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.8%2B-5C3EE8?logo=opencv&logoColor=white)](https://opencv.org)
-[![Tests](https://img.shields.io/badge/tests-202%20passed-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-216%20passed-brightgreen)]()
 [![Coverage](https://img.shields.io/badge/ruff-0%20errors-success)]()
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)]()
@@ -53,8 +53,16 @@ Three detection backends are supported:
 | OpenCV Edges (legacy) | Canny edge detection + contour filter | Fallback / comparison |
 | Google Cloud Vision (optional) | ML-based object detection | Complex multi-logo scenes |
 
-### Flexible Trimming
-Cut video by **Time** (hours/minutes/seconds), **Percent** (of total duration), or **Frames** — including one-click "remove first/last N minutes" for batch-stripping intros and outros without knowing each file's exact length.
+### Flexible Trimming & Splitting
+Three cut modes, all working on any video length — no need to know exact durations upfront:
+
+| Mode | How it works |
+|---|---|
+| **Time** | Skip intro / cut outro with hours/minutes/seconds fields |
+| **Markers** | Type start/end timestamps directly (`HH:MM:SS`, `MM:SS`, or plain seconds). Blank end = to end of video |
+| **Split** | Divide video into N equal parts after optional trim. Each part becomes a separate output file (`video_part1.mp4`, `video_part2.mp4`, …) with zero-padded numbering |
+
+Split mode is useful for breaking long recordings into episode-length segments or fitting files under size limits.
 
 ### Multi-Task Batch Processing
 Run multiple task tabs simultaneously — each with its own file list, trim settings, encoding profile, and output folder. A worker pool processes files concurrently with per-file progress bars and live FFmpeg log output.
@@ -153,7 +161,7 @@ VideoForge's parallel worker pool delivers measurable speedups over sequential p
 | **Logo Detection** | OpenCV + NumPy | Classical CV — no ML model weights needed |
 | **Imaging** | Pillow | Frame extraction for logo picker |
 | **Packaging** | PyInstaller 6.x | Standalone `.exe` with bundled FFmpeg |
-| **Testing** | pytest + pytest-cov | 202 tests (unit + integration) |
+| **Testing** | pytest + pytest-cov | 216 tests (unit + integration) |
 | **Linting** | ruff | Zero errors enforced |
 
 ---
@@ -221,7 +229,7 @@ Set `GOOGLE_APPLICATION_CREDENTIALS` to your service-account JSON. See [`docs/LO
 1. **Add task tabs** — start with Task 1 and Task 2; click "Add task tab" for more
 2. **Drop or select files** — drag video files directly into the window, or browse
 3. **Configure options** per task:
-   - Trim (skip intro / cut outro) by time, percent, or frames
+   - Cut mode: Time (skip intro/cut outro), Markers (type timestamps), or Split (divide into N parts)
    - Encoding profile (Universal, High Quality, Small File, iOS)
    - Delogo filter (auto-detect, visual picker, or manual coordinates)
    - Output folder, format, filename prefix/suffix
@@ -253,7 +261,7 @@ ruff check .
 
 | Metric | Value |
 |---|---|
-| Test functions | **202 passed**, 1 skipped |
+| Test functions | **216 passed**, 1 skipped |
 | Test files | 23 (19 unit + 4 integration) |
 | Lines of test code | ~2,583 |
 | Lint errors | **0** |
@@ -302,7 +310,7 @@ This project demonstrates several skills relevant to professional software engin
 - **Classical Computer Vision** — designed and implemented a temporal-variance logo-detection algorithm from scratch using NumPy array operations and OpenCV morphology, replacing a legacy edge-based detector that produced excessive false positives
 - **Concurrent Processing** — built a thread-safe worker pool with queue-based task distribution, graceful shutdown, and active-process tracking
 - **Subprocess Orchestration** — real-time FFmpeg progress parsing via stderr regex monitoring, dual execution paths (ffmpeg-python + raw subprocess) with automatic fallback
-- **Test-Driven Development** — 202 tests including integration tests that verify actual FFmpeg output, and synthetic-frame CV tests that run deterministically without video files
+- **Test-Driven Development** — 216 tests including integration tests that verify actual FFmpeg output, and synthetic-frame CV tests that run deterministically without video files
 - **Cross-Platform Packaging** — PyInstaller spec that bundles FFmpeg, applies UPX compression, and ships a double-clickable `.exe` with no runtime dependencies
 - **Clean Architecture** — single-responsibility modules, domain-specific exception hierarchy, pub/sub logging, and a central state container with computed properties
 
