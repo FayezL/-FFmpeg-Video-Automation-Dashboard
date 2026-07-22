@@ -1,143 +1,307 @@
+<div align="center">
+
 # VideoForge
 
-<p align="center">
-  <em>A desktop dashboard that turns FFmpeg into a point-and-click workflow — batch-process TV recordings with automatic logo detection, flexible trimming, and parallel encoding.</em>
-</p>
+**A desktop application that transforms FFmpeg into an intelligent, point-and-click video processing pipeline — featuring a custom computer-vision logo detector, multi-task batch processing, and parallel encoding.**
 
-<p align="center">
-  <img alt="Python" src="https://img.shields.io/badge/python-3.8%2B-blue">
-  <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
-  <img alt="FFmpeg" src="https://img.shields.io/badge/FFmpeg-4.0%2B-black">
-  <img alt="OpenCV" src="https://img.shields.io/badge/OpenCV-classical%20CV-blueviolet">
-  <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-pytest-brightgreen">
-</p>
+[![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python&logoColor=white)](https://python.org)
+[![FFmpeg](https://img.shields.io/badge/FFmpeg-4.0%2B-007808?logo=ffmpeg&logoColor=white)](https://ffmpeg.org)
+[![OpenCV](https://img.shields.io/badge/OpenCV-4.8%2B-5C3EE8?logo=opencv&logoColor=white)](https://opencv.org)
+[![Tests](https://img.shields.io/badge/tests-205%20passed-brightgreen)]()
+[![Coverage](https://img.shields.io/badge/ruff-0%20errors-success)]()
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)]()
+
+</div>
 
 ---
 
-VideoForge is a Python desktop application (built with CustomTkinter) that wraps FFmpeg in a clean, dark-themed UI. Originally built to convert a pile of personal Bash scripts into a reusable tool, it now supports automatic watermark/logo detection, flexible cut units, multi-task batch processing, parallel encoding, and packaging to a standalone Windows `.exe`.
+## The Problem
 
-## Highlights
+Video editors, archivists, and media teams often need to batch-process hundreds of recordings: trim intros, remove broadcaster watermarks, re-encode for compatibility, and rename files sequentially. Doing this manually with FFmpeg CLI commands is:
 
-- **Automatic logo detection** — a temporal-stability computer-vision pipeline (OpenCV + NumPy) samples frames, computes per-pixel variance, and locates persistent watermarks automatically. Manual coordinate entry and an optional Google Cloud Vision detector are also available.
-- **Multi-task batch processing** — run several task tabs at once, each with its own files and settings, processed sequentially with live per-file progress.
-- **Parallel encoding** — a worker pool runs multiple FFmpeg encodes concurrently to use more of your CPU.
-- **Flexible trimming** — cut by **Time**, **Percent**, or **Frames**, including one-click "cut last N minutes".
-- **Drag-and-drop** — drop files straight into the UI (tkinterdnd2).
-- **Detection profiles & templates** — save reusable logo-detection profiles (`%APPDATA%/VideoForge/profiles`) and processing templates for recurring jobs.
-- **One-click `.exe`** — PyInstaller packaging ships a double-clickable Windows executable with no Python install required.
+- **Error-prone** — one wrong flag ruins hours of encoding
+- **Repetitive** — the same operations run again and again
+- **Inaccessible** — non-technical team members can't use CLI tools
+- **Unobservable** — no progress tracking, no batch management, no error recovery
 
-## Screenshots
+## The Solution
 
-Screenshots live in [`docs/screenshots/`](docs/screenshots). *(Add `main-window.png`, `batch-processor.png`, etc. here.)*
+VideoForge wraps FFmpeg's raw power into a clean, dark-themed desktop GUI built with **CustomTkinter**. Instead of memorizing flags and writing Bash scripts, users drag-drop files, toggle options, and click **Start**. Behind the scenes, a custom computer-vision pipeline auto-detects watermarks, a thread pool processes files in parallel, and live progress keeps users informed.
+
+> Originally built to replace a pile of personal Bash scripts, VideoForge grew into a full desktop application demonstrating **classical computer vision, concurrent processing, and clean software architecture**.
+
+---
+
+## Key Features
+
+### Computer-Vision Logo Detection
+The standout feature. Instead of manually specifying watermark coordinates, VideoForge **finds them automatically** using a temporal-stability algorithm:
+
+1. **Sample 15 frames** evenly across the video (skipping intro/outro fade regions)
+2. **Stack frames into a NumPy array** and compute per-pixel temporal variance via `np.var(axis=0)`
+3. **Threshold the variance map** — static pixels (logos) have near-zero variance; dynamic content changes constantly
+4. **Morphological cleanup** (close gaps, remove noise via connected-components analysis)
+5. **Contour detection + scoring** — candidates ranked by 70% stability, 20% corner-position fit, 10% size fit
+
+**No deep learning, no API calls, no model weights** — just classical CV with OpenCV and NumPy. Detects a logo on a 1-hour episode in under 10 seconds.
+
+Three detection backends are supported:
+| Method | Approach | Use Case |
+|---|---|---|
+| **Temporal Stability** (default) | Per-pixel variance across frame stack | Broadcaster watermarks, news tickers |
+| OpenCV Edges (legacy) | Canny edge detection + contour filter | Fallback / comparison |
+| Google Cloud Vision (optional) | ML-based object detection | Complex multi-logo scenes |
+
+### Flexible Trimming
+Cut video by **Time** (hours/minutes/seconds), **Percent** (of total duration), or **Frames** — including one-click "remove first/last N minutes" for batch-stripping intros and outros without knowing each file's exact length.
+
+### Multi-Task Batch Processing
+Run multiple task tabs simultaneously — each with its own file list, trim settings, encoding profile, and output folder. A worker pool processes files concurrently with per-file progress bars and live FFmpeg log output.
+
+### Visual Logo Picker
+Click-drag a rectangle on a preview frame to manually select a watermark region. Coordinates convert from display resolution to original video resolution automatically. Copy-paste support for applying the same region across files.
+
+### Sequential Rename Plan
+Automatically renames output files with zero-padded sequential numbering (`episode01.mp4`, `episode02.mp4`, …) — works for any batch size.
+
+### Parallel Encoding + CPU Controls
+A configurable thread pool (`1–8` workers) runs multiple FFmpeg encodes concurrently. Per-process thread limiting and OS priority control prevent CPU saturation while keeping the system responsive.
+
+### One-Click `.exe` Packaging
+PyInstaller bundles everything — including the FFmpeg binary — into a standalone Windows executable. No Python install required for end users.
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    main.py (Entry Point)                 │
+│              VideoForgeApp — 1400×900 window             │
+│         Single-instance lock · FFmpeg availability       │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+        ┌──────────────┼──────────────┐
+        ▼              ▼              ▼
+┌─────────────┐ ┌────────────┐ ┌────────────┐
+│   UI Layer  │ │   State    │ │ Processing │
+│ (CustomTk)  │ │ Container  │ │   Engine   │
+└──────┬──────┘ └──────┬─────┘ └──────┬─────┘
+       │               │              │
+       │     ┌─────────┴──────────┐   │
+       │     │  Data Models       │   │
+       │     │  (dataclasses)     │   │
+       │     └────────────────────┘   │
+       │                              │
+┌──────┴──────────────────────────────┴──────┐
+│              Core Modules                   │
+├────────────┬────────────┬───────────────────┤
+│  Video     │  Logo      │   Parallel        │
+│  Processor │  Detectors │   Processor       │
+│ (FFmpeg)   │ (OpenCV)   │  (ThreadPool)     │
+└────────────┴────────────┴───────────────────┘
+```
+
+### Design Principles
+- **Single responsibility** — each module handles one concern (encoding, detection, UI, state)
+- **Graceful degradation** — FFmpeg/ffprobe fallbacks, optional AI detector, drag-drop optional
+- **Thread-safe state** — central `AppState` with pub/sub log callbacks
+- **Testable** — CV detectors tested with synthetic NumPy frame stacks (no real video needed)
+- **Clean exception hierarchy** — domain-specific errors (`VideoReadError`, `DetectionFailedError`, `DetectionCancelledError`)
+
+---
+
+## Encoding Profiles
+
+Four predefined profiles tuned for real-world use cases:
+
+| Profile | Preset | CRF | Audio | Target |
+|---|---|---|---|---|
+| **Universal Compatibility** | slow | 23 | AAC 192k | All devices — baseline H.264, level 3.1 |
+| **High Quality** | slow | 18 | AAC 256k | Archival quality |
+| **Smaller File Size** | fast | 28 | AAC 128k | Bandwidth-constrained sharing |
+| **iOS Optimized** | slow | 22 | AAC 192k | iPhone, iPad, Apple TV |
+
+All profiles use `libx264`, `yuv420p` pixel format, and `+faststart` for web streaming.
+
+---
 
 ## Tech Stack
 
-| Area | Technology |
-| --- | --- |
-| Language | Python 3.8+ |
-| GUI | CustomTkinter, tkinterdnd2 |
-| Video engine | FFmpeg 4.0+ (`ffmpeg-python` / subprocess) |
-| Logo detection | OpenCV + NumPy (classical CV); optional Google Cloud Vision |
-| Imaging | Pillow |
-| Packaging | PyInstaller |
-| Tests / lint | pytest, pytest-cov, ruff |
+| Area | Technology | Why |
+|---|---|---|
+| **Language** | Python 3.8+ | Cross-platform, rich media ecosystem |
+| **GUI** | CustomTkinter + tkinterdnd2 | Modern dark UI with native drag-and-drop |
+| **Video Engine** | FFmpeg (via subprocess) | Industry-standard encoder, maximum format support |
+| **Logo Detection** | OpenCV + NumPy | Classical CV — no ML model weights needed |
+| **Imaging** | Pillow | Frame extraction for logo picker |
+| **Packaging** | PyInstaller 6.x | Standalone `.exe` with bundled FFmpeg |
+| **Testing** | pytest + pytest-cov | 205 tests (unit + integration) |
+| **Linting** | ruff | Zero errors enforced |
 
-## Prerequisites
+---
 
-- Python 3.8+
-- **FFmpeg** installed and on your `PATH`
+## Getting Started
+
+### Prerequisites
+- **Python 3.8+**
+- **FFmpeg** installed and on your system `PATH`
 
 ```bash
 # macOS
 brew install ffmpeg
-# Debian/Ubuntu
+
+# Debian / Ubuntu
 sudo apt install ffmpeg
-# Windows: download from ffmpeg.org, or: choco install ffmpeg
+
+# Windows
+choco install ffmpeg
+# or download from https://ffmpeg.org/download.html
 ```
 
-Verify with `ffmpeg -version`.
+Verify: `ffmpeg -version`
 
-## Installation
+### Installation
 
 ```bash
-git clone <repository-url>
-cd VideoForge
+git clone https://github.com/FayezL/-FFmpeg-Video-Automation-Dashboard.git
+cd -FFmpeg-Video-Automation-Dashboard
+
 python -m venv venv
-# Windows: venv\Scripts\activate   |   macOS/Linux: source venv/bin/activate
+# Windows:  venv\Scripts\activate
+# macOS/Linux:  source venv/bin/activate
+
 pip install -r requirements.txt
 ```
 
-For the optional Cloud Vision logo detector: `pip install -r requirements-ai.txt` and set `GOOGLE_APPLICATION_CREDENTIALS` (see [`docs/LOGO_DETECTION_AI_OPTIONS.md`](docs/LOGO_DETECTION_AI_OPTIONS.md)).
-
-## Running
+### Run
 
 ```bash
 python main.py
 ```
 
-Or, after `pip install -e .`, use the `videoforge` console command.
+Or install as a package and use the console entry point:
+
+```bash
+pip install -e .
+videoforge
+```
+
+### Optional: AI Logo Detection
+
+For the Google Cloud Vision detector backend:
+
+```bash
+pip install -r requirements-ai.txt
+```
+
+Set `GOOGLE_APPLICATION_CREDENTIALS` to your service-account JSON. See [`docs/LOGO_DETECTION_AI_OPTIONS.md`](docs/LOGO_DETECTION_AI_OPTIONS.md) for setup.
+
+---
 
 ## Usage
 
-1. **Batch Processor** — add task tabs, drop or select files, pick an output folder, enable options (trim / cut-units / delogo / auto-detect), and start.
-2. **Single File** — process one file with the same options.
-3. **Logs** — live FFmpeg output and processing messages.
-4. **Settings** — FFmpeg encoding details and app info.
+1. **Add task tabs** — start with Task 1 and Task 2; click "Add task tab" for more
+2. **Drop or select files** — drag video files directly into the window, or browse
+3. **Configure options** per task:
+   - Trim (skip intro / cut outro) by time, percent, or frames
+   - Encoding profile (Universal, High Quality, Small File, iOS)
+   - Delogo filter (auto-detect, visual picker, or manual coordinates)
+   - Output folder, format, filename prefix/suffix
+   - Sequential rename plan
+4. **Click Start** — live progress per file, FFmpeg log output, stop button for cancellation
 
-### Encoding defaults
+---
 
-H.264 (`libx264`, preset `fast`, CRF 23, YUV420P) + AAC 192k + faststart — a quality/size balance tuned for iOS devices and TV boxes.
-
-## Packaging a Windows executable
+## Packaging a Windows Executable
 
 ```bash
 pyinstaller --clean --noconfirm src/packaging/VideoForge.spec
-# → dist/VideoForge.exe
+# → dist/VideoForge.exe  (standalone, no Python required)
 ```
 
-See [`docs/BUILDING.md`](docs/BUILDING.md) and [`docs/PACKAGE_GUIDE.md`](docs/PACKAGE_GUIDE.md) for full details.
+The build bundles the FFmpeg binary, applies UPX compression, and excludes unused heavy packages (matplotlib, scipy, pandas). See [`docs/BUILDING.md`](docs/BUILDING.md) for details.
 
-## Testing & lint
+---
+
+## Testing & Quality
 
 ```bash
-pytest                 # full suite (unit + integration)
-ruff check .           # lint
+# Full test suite (unit + integration)
+pytest
+
+# Lint
+ruff check .
 ```
 
-Integration tests run real FFmpeg; ensure FFmpeg is on your `PATH`.
+| Metric | Value |
+|---|---|
+| Test functions | **205 passed**, 1 skipped |
+| Test files | 23 (19 unit + 4 integration) |
+| Lines of test code | ~2,583 |
+| Lint errors | **0** |
+| Source files | 22 modules + entry point |
+
+Integration tests run real FFmpeg encodes to verify actual output. The CV detector is tested with **synthetic NumPy frame stacks** — deterministic, fast, and no video files required.
+
+---
 
 ## Project Structure
 
 ```
-main.py                      # Entry point — VideoForgeApp
+main.py                          # Entry point — VideoForgeApp
 src/
-├── video_processor.py       # FFmpeg orchestration & filters
-├── parallel_processor.py    # Concurrent encode worker pool
-├── logo_detector_temporal.py# Temporal-stability CV detector (default)
-├── logo_detector_vision.py  # Optional Google Cloud Vision detector
-├── logo_detector.py         # Manual-coordinate detector
-├── logo_detection_utils.py  # Shared CV filter helpers
-├── detection_profiles.py    # JSON logo-detection profiles
-├── templates.py             # Processing-profile templates
-├── data_models.py           # Config / profile / template dataclasses
-├── state.py                 # Application state container
-├── exceptions.py            # Domain exception hierarchy
-├── packaging/               # PyInstaller spec + build script
-└── ui/                      # CustomTkinter frames (batch, single, logs, settings, drag-drop)
-tests/                       # Unit + integration tests
-docs/                        # Guides and design specs
-specs/                       # Historical feature design records
+├── video_processor.py           # FFmpeg orchestration, filters, progress tracking
+├── parallel_processor.py        # Thread-pool concurrent encoder
+├── logo_detector_temporal.py    # Temporal-stability CV detector (default)
+├── logo_detector.py             # Legacy edge-based detector
+├── logo_detector_vision.py      # Optional Google Cloud Vision detector
+├── logo_detection_utils.py      # Shared CV filter helpers
+├── logo_position_utils.py       # Coordinate parsing & frame extraction
+├── detection_profiles.py        # JSON profile persistence
+├── templates.py                 # Processing-template manager
+├── data_models.py               # Detection/config/profile dataclasses
+├── state.py                     # Central application-state container
+├── exceptions.py                # Domain exception hierarchy
+├── packaging/                   # PyInstaller spec + build script
+└── ui/                          # CustomTkinter frames
+    ├── batch_processor.py       # Multi-task batch workflow (largest module)
+    ├── single_processor.py      # Single-file processing
+    ├── logo_picker.py           # Visual click-drag logo selector
+    ├── settings_panel.py        # CPU/parallel/FFmpeg configuration
+    ├── logs_panel.py            # Live FFmpeg output
+    └── drag_drop.py             # tkinterdnd2 file handler
+tests/                           # 23 test files — unit + integration
+docs/                            # Guides and design specs
+specs/                           # Historical feature design records
 ```
+
+---
+
+## Engineering Highlights
+
+This project demonstrates several skills relevant to professional software engineering:
+
+- **Classical Computer Vision** — designed and implemented a temporal-variance logo-detection algorithm from scratch using NumPy array operations and OpenCV morphology, replacing a legacy edge-based detector that produced excessive false positives
+- **Concurrent Processing** — built a thread-safe worker pool with queue-based task distribution, graceful shutdown, and active-process tracking
+- **Subprocess Orchestration** — real-time FFmpeg progress parsing via stderr regex monitoring, dual execution paths (ffmpeg-python + raw subprocess) with automatic fallback
+- **Test-Driven Development** — 205 tests including integration tests that verify actual FFmpeg output, and synthetic-frame CV tests that run deterministically without video files
+- **Cross-Platform Packaging** — PyInstaller spec that bundles FFmpeg, applies UPX compression, and ships a double-clickable `.exe` with no runtime dependencies
+- **Clean Architecture** — single-responsibility modules, domain-specific exception hierarchy, pub/sub logging, and a central state container with computed properties
+
+---
 
 ## Documentation
 
-- [`docs/BUILDING.md`](docs/BUILDING.md) — building the standalone executable
-- [`docs/PACKAGE_GUIDE.md`](docs/PACKAGE_GUIDE.md) — packaging walkthrough
-- [`docs/TRIM_MODES_GUIDE.md`](docs/TRIM_MODES_GUIDE.md) — trim modes reference
-- [`docs/LOGO_DETECTION_AI_OPTIONS.md`](docs/LOGO_DETECTION_AI_OPTIONS.md) — detection methods & Cloud Vision setup
-- [`specs/`](specs) — historical design documents for each feature
+- [`docs/BUILDING.md`](docs/BUILDING.md) — Building the standalone executable
+- [`docs/PACKAGE_GUIDE.md`](docs/PACKAGE_GUIDE.md) — Packaging walkthrough
+- [`docs/TRIM_MODES_GUIDE.md`](docs/TRIM_MODES_GUIDE.md) — Trim modes reference
+- [`docs/LOGO_DETECTION_AI_OPTIONS.md`](docs/LOGO_DETECTION_AI_OPTIONS.md) — Detection methods & Cloud Vision setup
+- [`specs/`](specs/) — Historical design documents for each feature
+
+---
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) — Copyright © 2026 FayezL
