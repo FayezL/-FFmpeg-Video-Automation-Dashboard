@@ -8,10 +8,7 @@ Generates a batch of test videos, then times two approaches:
 Both do identical work: trim 1s from start, re-encode to H.264 slow.
 """
 
-import shutil
 import subprocess
-import sys
-import threading
 import time
 from pathlib import Path
 
@@ -80,7 +77,7 @@ def bench_parallel(workers=4):
     for f in OUT_PARALLEL.glob("*"):
         f.unlink()
 
-    from src.state import AppState, ProcessingFile, FileStatus
+    from src.state import AppState, ProcessingFile
     from src.parallel_processor import ParallelProcessor
     from src.video_processor import VideoProcessor
 
@@ -105,7 +102,6 @@ def bench_parallel(workers=4):
         output_folder_override=str(OUT_PARALLEL),
     )
 
-    done_event = threading.Event()
     completed = []
 
     def on_complete(file, success, error_msg):
@@ -130,8 +126,8 @@ def main():
     print("  VideoForge Benchmark: Sequential vs Parallel Processing")
     print("=" * 65)
     print(f"  Files:     {NUM_FILES} clips x {CLIP_SECONDS}s each")
-    print(f"  Encoder:   libx264 -preset slow -crf 23")
-    print(f"  Threads:   2 per process (capped via -threads flag)")
+    print("  Encoder:   libx264 -preset slow -crf 23")
+    print("  Threads:   2 per process (capped via -threads flag)")
     print(f"  CPU cores: {__import__('os').cpu_count()}")
     print()
 
@@ -139,15 +135,15 @@ def main():
     generate_test_videos()
     print()
 
-    print(f"Step 2: Manual sequential FFmpeg (1 file at a time)...")
+    print("Step 2: Manual sequential FFmpeg (1 file at a time)...")
     manual_time = bench_manual()
     print(f"  -> {manual_time:.1f}s\n")
 
-    print(f"Step 3: VideoForge ParallelProcessor (4 workers)...")
+    print("Step 3: VideoForge ParallelProcessor (4 workers)...")
     parallel4_time = bench_parallel(workers=4)
     print(f"  -> {parallel4_time:.1f}s\n")
 
-    print(f"Step 4: VideoForge ParallelProcessor (8 workers)...")
+    print("Step 4: VideoForge ParallelProcessor (8 workers)...")
     parallel8_time = bench_parallel(workers=8)
     print(f"  -> {parallel8_time:.1f}s\n")
 

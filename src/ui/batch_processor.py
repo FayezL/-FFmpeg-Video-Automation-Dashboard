@@ -248,7 +248,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         content = ctk.CTkFrame(trim_frame, fg_color="transparent")
         content.pack(fill="x", padx=16, pady=(8, 16))
 
-        # --- Unit selector row (TIME / PERCENT / FRAMES) ---
+        # --- Unit selector row (TIME / SPLIT / MARKERS) ---
         unit_row = ctk.CTkFrame(content, fg_color="transparent")
         unit_row.pack(fill="x", pady=(0, 6))
         ctk.CTkLabel(
@@ -257,7 +257,7 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         self.cut_unit_var = ctk.StringVar(value=self.state.cut_unit.value)
         self.cut_unit_menu = ctk.CTkOptionMenu(
             unit_row,
-            values=["time", "percent", "frames"],
+            values=["time", "split", "markers"],
             variable=self.cut_unit_var,
             command=self._on_cut_unit_change,
             width=120,
@@ -357,78 +357,65 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         self.cut_last_minutes = self.cut_end_minutes_entry
         self.cut_last_seconds = self.cut_end_seconds_entry
 
-        # --- PERCENT inputs (shown when unit=percent) ---
-        self._percent_rows_frame = ctk.CTkFrame(content, fg_color="transparent")
+        # --- MARKERS inputs (shown when unit=markers) ---
+        self._markers_rows_frame = ctk.CTkFrame(content, fg_color="transparent")
 
-        pct_start_row = ctk.CTkFrame(self._percent_rows_frame, fg_color="transparent")
-        pct_start_row.pack(fill="x", pady=6)
-        self.pct_start_enabled_cb = ctk.CTkCheckBox(
-            pct_start_row,
-            text="Remove from START (skip intro):",
-            font=ctk.CTkFont(size=13),
-            command=self._on_percent_trim_change,
-        )
-        self.pct_start_enabled_cb.pack(side="left")
-        self.pct_start_entry = ctk.CTkEntry(pct_start_row, width=60, height=28)
-        self.pct_start_entry.insert(0, str(self.state.cut_start_percent))
-        self.pct_start_entry.pack(side="left", padx=(8, 2))
+        markers_start_row = ctk.CTkFrame(self._markers_rows_frame, fg_color="transparent")
+        markers_start_row.pack(fill="x", pady=6)
         ctk.CTkLabel(
-            pct_start_row, text="%", font=ctk.CTkFont(size=11), text_color="#64748B"
+            markers_start_row,
+            text="Start time:",
+            font=ctk.CTkFont(size=13),
+            width=90,
+            anchor="w",
+        ).pack(side="left", padx=(0, 8))
+        self.markers_start_entry = ctk.CTkEntry(markers_start_row, width=120, height=28)
+        self.markers_start_entry.insert(0, self.state.cut_markers_start)
+        self.markers_start_entry.pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(
+            markers_start_row,
+            text="HH:MM:SS",
+            font=ctk.CTkFont(size=11),
+            text_color="#64748B",
         ).pack(side="left")
 
-        pct_end_row = ctk.CTkFrame(self._percent_rows_frame, fg_color="transparent")
-        pct_end_row.pack(fill="x", pady=6)
-        self.pct_end_enabled_cb = ctk.CTkCheckBox(
-            pct_end_row,
-            text="Remove from END (cut outro):",
-            font=ctk.CTkFont(size=13),
-            command=self._on_percent_trim_change,
-        )
-        self.pct_end_enabled_cb.pack(side="left")
-        if self.state.cut_end_enabled:
-            self.pct_end_enabled_cb.select()
-        self.pct_end_entry = ctk.CTkEntry(pct_end_row, width=60, height=28)
-        self.pct_end_entry.insert(0, str(self.state.cut_end_percent or 0))
-        self.pct_end_entry.pack(side="left", padx=(8, 2))
+        markers_end_row = ctk.CTkFrame(self._markers_rows_frame, fg_color="transparent")
+        markers_end_row.pack(fill="x", pady=6)
         ctk.CTkLabel(
-            pct_end_row, text="%", font=ctk.CTkFont(size=11), text_color="#64748B"
+            markers_end_row,
+            text="End time:",
+            font=ctk.CTkFont(size=13),
+            width=90,
+            anchor="w",
+        ).pack(side="left", padx=(0, 8))
+        self.markers_end_entry = ctk.CTkEntry(markers_end_row, width=120, height=28)
+        self.markers_end_entry.insert(0, self.state.cut_markers_end)
+        self.markers_end_entry.pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(
+            markers_end_row,
+            text="HH:MM:SS (blank = to end)",
+            font=ctk.CTkFont(size=11),
+            text_color="#64748B",
         ).pack(side="left")
 
-        # --- FRAMES inputs (shown when unit=frames) ---
-        self._frame_rows_frame = ctk.CTkFrame(content, fg_color="transparent")
+        # --- SPLIT inputs (shown when unit=split) ---
+        self._split_rows_frame = ctk.CTkFrame(content, fg_color="transparent")
 
-        frm_start_row = ctk.CTkFrame(self._frame_rows_frame, fg_color="transparent")
-        frm_start_row.pack(fill="x", pady=6)
-        self.frm_start_enabled_cb = ctk.CTkCheckBox(
-            frm_start_row,
-            text="Remove from START (skip intro):",
-            font=ctk.CTkFont(size=13),
-            command=self._on_frame_trim_change,
-        )
-        self.frm_start_enabled_cb.pack(side="left")
-        self.frm_start_entry = ctk.CTkEntry(frm_start_row, width=80, height=28)
-        self.frm_start_entry.insert(0, str(self.state.cut_start_frame))
-        self.frm_start_entry.pack(side="left", padx=(8, 2))
+        split_row = ctk.CTkFrame(self._split_rows_frame, fg_color="transparent")
+        split_row.pack(fill="x", pady=6)
         ctk.CTkLabel(
-            frm_start_row, text="frames", font=ctk.CTkFont(size=11), text_color="#64748B"
-        ).pack(side="left")
-
-        frm_end_row = ctk.CTkFrame(self._frame_rows_frame, fg_color="transparent")
-        frm_end_row.pack(fill="x", pady=6)
-        self.frm_end_enabled_cb = ctk.CTkCheckBox(
-            frm_end_row,
-            text="Remove from END (cut outro):",
+            split_row,
+            text="Number of parts:",
             font=ctk.CTkFont(size=13),
-            command=self._on_frame_trim_change,
-        )
-        self.frm_end_enabled_cb.pack(side="left")
-        if self.state.cut_end_enabled:
-            self.frm_end_enabled_cb.select()
-        self.frm_end_entry = ctk.CTkEntry(frm_end_row, width=80, height=28)
-        self.frm_end_entry.insert(0, str(self.state.cut_end_frame or 0))
-        self.frm_end_entry.pack(side="left", padx=(8, 2))
+        ).pack(side="left", padx=(0, 8))
+        self.split_parts_entry = ctk.CTkEntry(split_row, width=60, height=28)
+        self.split_parts_entry.insert(0, str(self.state.split_parts))
+        self.split_parts_entry.pack(side="left", padx=(0, 6))
         ctk.CTkLabel(
-            frm_end_row, text="frames", font=ctk.CTkFont(size=11), text_color="#64748B"
+            split_row,
+            text="(trim above applies first, then splits remaining video)",
+            font=ctk.CTkFont(size=11),
+            text_color="#64748B",
         ).pack(side="left")
 
         # Sync initial visibility based on the current unit
@@ -440,46 +427,32 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
         self._sync_unit_visibility()
 
     def _sync_unit_visibility(self):
-        """Show/hide time/percent/frame rows based on the selected unit."""
+        """Show/hide time/markers/split rows based on the selected unit."""
         unit = self.state.cut_unit
         if unit == CutUnit.TIME:
             self._time_rows_frame.pack(fill="x")
-            self._percent_rows_frame.pack_forget()
-            self._frame_rows_frame.pack_forget()
-        elif unit == CutUnit.PERCENT:
+            self._markers_rows_frame.pack_forget()
+            self._split_rows_frame.pack_forget()
+        elif unit == CutUnit.MARKERS:
             self._time_rows_frame.pack_forget()
-            self._percent_rows_frame.pack(fill="x")
-            self._frame_rows_frame.pack_forget()
-        elif unit == CutUnit.FRAMES:
-            self._time_rows_frame.pack_forget()
-            self._percent_rows_frame.pack_forget()
-            self._frame_rows_frame.pack(fill="x")
+            self._markers_rows_frame.pack(fill="x")
+            self._split_rows_frame.pack_forget()
+        elif unit == CutUnit.SPLIT:
+            self._time_rows_frame.pack(fill="x")
+            self._markers_rows_frame.pack_forget()
+            self._split_rows_frame.pack(fill="x")
 
-    def _on_percent_trim_change(self):
-        """Sync percent checkboxes and entry values to AppState."""
-        self.state.cut_start_enabled = self.pct_start_enabled_cb.get() == 1
-        self.state.cut_end_enabled = self.pct_end_enabled_cb.get() == 1
-        try:
-            self.state.cut_start_percent = float(self.pct_start_entry.get() or 0)
-        except ValueError:
-            self.state.cut_start_percent = 0.0
-        try:
-            self.state.cut_end_percent = float(self.pct_end_entry.get() or 0)
-        except ValueError:
-            self.state.cut_end_percent = 0.0
+    def _on_markers_change(self):
+        """Sync markers entry values to AppState."""
+        self.state.cut_markers_start = self.markers_start_entry.get()
+        self.state.cut_markers_end = self.markers_end_entry.get()
 
-    def _on_frame_trim_change(self):
-        """Sync frame checkboxes and entry values to AppState."""
-        self.state.cut_start_enabled = self.frm_start_enabled_cb.get() == 1
-        self.state.cut_end_enabled = self.frm_end_enabled_cb.get() == 1
+    def _on_split_change(self):
+        """Sync split parts entry value to AppState."""
         try:
-            self.state.cut_start_frame = int(self.frm_start_entry.get() or 0)
+            self.state.split_parts = max(1, int(self.split_parts_entry.get() or 2))
         except ValueError:
-            self.state.cut_start_frame = 0
-        try:
-            self.state.cut_end_frame = int(self.frm_end_entry.get() or 0)
-        except ValueError:
-            self.state.cut_end_frame = 0
+            self.state.split_parts = 2
 
     def _on_trim_change(self):
         self.state.cut_start_enabled = self.cut_start_enabled_cb.get() == 1
@@ -1801,6 +1774,14 @@ class BatchProcessorFrame(ctk.CTkScrollableFrame):
             )
         except ValueError:
             self.state.cut_end_seconds_amount = 0.0
+
+        # Sync markers and split inputs
+        self.state.cut_markers_start = self.markers_start_entry.get()
+        self.state.cut_markers_end = self.markers_end_entry.get()
+        try:
+            self.state.split_parts = max(1, int(self.split_parts_entry.get() or 2))
+        except ValueError:
+            self.state.split_parts = 2
 
         self.state.output_format = self.format_var.get()
         self.state.output_prefix = self.prefix_entry.get()

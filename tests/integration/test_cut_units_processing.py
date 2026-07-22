@@ -1,5 +1,5 @@
 """
-Integration tests for the cut-unit feature (TIME / PERCENT / FRAMES).
+Integration tests for the cut-unit feature (TIME / SPLIT / MARKERS).
 
 Generates a short test video with ffmpeg, then runs VideoProcessor.process_video
 with different cut_unit settings and verifies the output video duration matches
@@ -67,108 +67,144 @@ def _run_processor(state: AppState, input_path: Path, output_path: Path):
     assert output_path.exists(), "Output file was not created"
 
 
-# ─── probe_video ──────────────────────────────────────────────────────────
+# --- probe_video --------------------------------------------------------
 
-def test_probe_video_returns_fps(test_video):
-    """probe_video must return a non-zero fps for a real video."""
+def test_probe_video_returns_duration(test_video):
+    """probe_video must return correct duration for a real video."""
     state = AppState()
     processor = VideoProcessor(state)
     meta = processor.probe_video(str(test_video))
-    assert meta["fps"] == pytest.approx(30.0, abs=0.5)
     assert meta["duration"] == pytest.approx(10.0, abs=0.5)
 
 
-# ─── PERCENT unit ──────────────────────────────────────────────────────────
+# --- MARKERS unit --------------------------------------------------------
 
-def test_percent_cut_last_half(tmp_path, test_video):
-    """Remove last 50% of a 10s video → output ≈ 5s."""
+def test_markers_cut_range(tmp_path, test_video):
+    """Cut from 2s to 8s of a 10s video → output ≈ 6s."""
     state = AppState()
-    state.cut_unit = CutUnit.PERCENT
-    state.cut_start_enabled = False
-    state.cut_end_enabled = True
-    state.cut_end_percent = 50.0  # remove last 50 %
+    state.cut_unit = CutUnit.MARKERS
+    state.cut_markers_start = "00:00:02"
+    state.cut_markers_end = "00:00:08"
 
-    out = tmp_path / "out_pct_half.mp4"
-    _run_processor(state, test_video, out)
-    duration = _probe_duration(out)
-    assert duration == pytest.approx(5.0, abs=0.5)
-
-
-def test_percent_cut_first_30(tmp_path, test_video):
-    """Remove first 30% of a 10s video → output ≈ 7s."""
-    state = AppState()
-    state.cut_unit = CutUnit.PERCENT
-    state.cut_start_enabled = True
-    state.cut_start_percent = 30.0
-    state.cut_end_enabled = False
-
-    out = tmp_path / "out_pct_first30.mp4"
-    _run_processor(state, test_video, out)
-    duration = _probe_duration(out)
-    assert duration == pytest.approx(7.0, abs=0.5)
-
-
-def test_percent_range_keep_middle(tmp_path, test_video):
-    """Keep 20%-80% of a 10s video → output ≈ 6s (from 2s to 8s)."""
-    state = AppState()
-    state.cut_unit = CutUnit.PERCENT
-    state.cut_start_enabled = True
-    state.cut_start_percent = 20.0
-    state.cut_end_enabled = True
-    state.cut_end_percent = 20.0  # remove 20% from end
-
-    out = tmp_path / "out_pct_range.mp4"
+    out = tmp_path / "out_markers_range.mp4"
     _run_processor(state, test_video, out)
     duration = _probe_duration(out)
     assert duration == pytest.approx(6.0, abs=0.5)
 
 
-# ─── FRAMES unit ───────────────────────────────────────────────────────────
-
-def test_frames_cut_last_90(tmp_path, test_video):
-    """Remove last 90 frames at 30fps (=3s) from 10s video → output ≈ 7s."""
+def test_markers_cut_start_only(tmp_path, test_video):
+    """Cut from 3s to end of a 10s video → output ≈ 7s."""
     state = AppState()
-    state.cut_unit = CutUnit.FRAMES
-    state.cut_start_enabled = False
-    state.cut_end_enabled = True
-    state.cut_end_frame = 90  # 90 frames / 30 fps = 3 seconds
+    state.cut_unit = CutUnit.MARKERS
+    state.cut_markers_start = "00:00:03"
+    state.cut_markers_end = ""  # blank = to end
 
-    out = tmp_path / "out_frames_last90.mp4"
+    out = tmp_path / "out_markers_start.mp4"
     _run_processor(state, test_video, out)
     duration = _probe_duration(out)
     assert duration == pytest.approx(7.0, abs=0.5)
 
 
-def test_frames_cut_first_60(tmp_path, test_video):
-    """Remove first 60 frames at 30fps (=2s) from 10s video → output ≈ 8s."""
+def test_markers_short_format(tmp_path, test_video):
+    """Using MM:SS format for timestamps should work the same."""
     state = AppState()
-    state.cut_unit = CutUnit.FRAMES
-    state.cut_start_enabled = True
-    state.cut_start_frame = 60
+    state.cut_unit = CutUnit.MARKERS
+    state.cut_markers_start = "00:04"  # 4 seconds
+    state.cut_markers_end = "00:08"   # 8 seconds
+
+    out = tmp_path / "out_markers_short.mp4"
+    _run_processor(state, test_video, out)
+    duration = _probe_duration(out)
+    assert duration == pytest.approx(4.0, abs=0.5)
+
+
+def test_markers_plain_seconds(tmp_path, test_video):
+    """Using plain seconds should also work."""
+    state = AppState()
+    state.cut_unit = CutUnit.MARKERS
+    state.cut_markers_start = "5"
+    state.cut_markers_end = "9"
+
+    out = tmp_path / "out_markers_plain.mp4"
+    _run_processor(state, test_video, out)
+    duration = _probe_duration(out)
+    assert duration == pytest.approx(4.0, abs=0.5)
+
+
+# --- SPLIT unit ----------------------------------------------------------
+
+def test_split_into_two(tmp_path, test_video):
+    """Split a 10s video into 2 parts → each ≈ 5s."""
+    state = AppState()
+    state.cut_unit = CutUnit.SPLIT
+    state.split_parts = 2
+    state.cut_start_enabled = False
     state.cut_end_enabled = False
 
-    out = tmp_path / "out_frames_first60.mp4"
-    _run_processor(state, test_video, out)
-    duration = _probe_duration(out)
-    assert duration == pytest.approx(8.0, abs=0.5)
+    out = tmp_path / "out_split.mp4"
+    processor = VideoProcessor(state)
+    success, error = processor.process_video(str(test_video), str(out))
+    assert success, f"Split failed: {error}"
+
+    part1 = tmp_path / "out_split_part1.mp4"
+    part2 = tmp_path / "out_split_part2.mp4"
+    assert part1.exists(), "Part 1 not created"
+    assert part2.exists(), "Part 2 not created"
+
+    d1 = _probe_duration(part1)
+    d2 = _probe_duration(part2)
+    assert d1 == pytest.approx(5.0, abs=0.7)
+    assert d2 == pytest.approx(5.0, abs=0.7)
 
 
-def test_frames_range_keep_middle(tmp_path, test_video):
-    """Keep frames 60-240 (2s-8s at 30fps) → output ≈ 6s."""
+def test_split_into_four(tmp_path, test_video):
+    """Split a 10s video into 4 parts → each ≈ 2.5s."""
     state = AppState()
-    state.cut_unit = CutUnit.FRAMES
+    state.cut_unit = CutUnit.SPLIT
+    state.split_parts = 4
+    state.cut_start_enabled = False
+    state.cut_end_enabled = False
+
+    out = tmp_path / "out_split4.mp4"
+    processor = VideoProcessor(state)
+    success, error = processor.process_video(str(test_video), str(out))
+    assert success, f"Split failed: {error}"
+
+    for i in range(1, 5):
+        part = tmp_path / f"out_split4_part{i}.mp4"
+        assert part.exists(), f"Part {i} not created"
+        d = _probe_duration(part)
+        assert d == pytest.approx(2.5, abs=0.8), f"Part {i} duration {d}s not ~2.5s"
+
+
+def test_split_with_trim(tmp_path, test_video):
+    """Trim 2s from start, then split remaining 8s into 2 parts → each ≈ 4s."""
+    state = AppState()
+    state.cut_unit = CutUnit.SPLIT
+    state.split_parts = 2
     state.cut_start_enabled = True
-    state.cut_start_frame = 60
-    state.cut_end_enabled = True
-    state.cut_end_frame = 60  # remove last 60 frames (2s)
+    state.cut_start_hours = 0
+    state.cut_start_minutes = 0
+    state.cut_start_seconds = 2.0
+    state.cut_end_enabled = False
 
-    out = tmp_path / "out_frames_range.mp4"
-    _run_processor(state, test_video, out)
-    duration = _probe_duration(out)
-    assert duration == pytest.approx(6.0, abs=0.5)
+    out = tmp_path / "out_split_trim.mp4"
+    processor = VideoProcessor(state)
+    success, error = processor.process_video(str(test_video), str(out))
+    assert success, f"Split with trim failed: {error}"
+
+    part1 = tmp_path / "out_split_trim_part1.mp4"
+    part2 = tmp_path / "out_split_trim_part2.mp4"
+    assert part1.exists(), "Part 1 not created"
+    assert part2.exists(), "Part 2 not created"
+
+    d1 = _probe_duration(part1)
+    d2 = _probe_duration(part2)
+    assert d1 == pytest.approx(4.0, abs=0.7)
+    assert d2 == pytest.approx(4.0, abs=0.7)
 
 
-# ─── Backward compatibility ────────────────────────────────────────────────
+# --- Backward compatibility -----------------------------------------------
 
 def test_time_unit_still_works(tmp_path, test_video):
     """With cut_unit=TIME (default), the legacy time-based path must work."""
@@ -189,9 +225,9 @@ def test_time_unit_still_works(tmp_path, test_video):
 def test_no_cut_passes_through(tmp_path, test_video):
     """With no trim enabled, output duration should match input."""
     state = AppState()
-    state.cut_unit = CutUnit.PERCENT
-    state.cut_start_enabled = False
-    state.cut_end_enabled = False
+    state.cut_unit = CutUnit.MARKERS
+    state.cut_markers_start = "00:00:00"
+    state.cut_markers_end = ""
 
     out = tmp_path / "out_nocut.mp4"
     _run_processor(state, test_video, out)

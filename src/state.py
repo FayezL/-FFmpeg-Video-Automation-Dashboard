@@ -28,8 +28,8 @@ class CutUnit(Enum):
     """Unit for expressing cut values. Applies to all cut modes."""
 
     TIME = "time"        # Value is in seconds (existing behavior)
-    PERCENT = "percent"  # Value is a percentage of total duration (0-100)
-    FRAMES = "frames"    # Value is a frame number (converted via fps)
+    SPLIT = "split"      # Split video into N equal parts (after optional trim)
+    MARKERS = "markers"  # Cut by typing start/end timestamps (HH:MM:SS)
 
 
 @dataclass
@@ -227,19 +227,16 @@ class AppState:
 
         self.cut_last_5_minutes: bool = True
 
-        # Cut unit selector (TIME / PERCENT / FRAMES) — applies to all modes.
+        # Cut unit selector (TIME / SPLIT / MARKERS) — applies to all modes.
         # Default TIME preserves existing behavior.
         self.cut_unit: CutUnit = CutUnit.TIME
 
-        # Percent inputs (used when cut_unit == PERCENT)
-        self.cut_amount_percent: float = 5.0       # For CUT_FIRST / CUT_LAST
-        self.cut_start_percent: float = 0.0        # For CUT_RANGE
-        self.cut_end_percent: Optional[float] = None  # None = to end
+        # Markers inputs (used when cut_unit == MARKERS)
+        self.cut_markers_start: str = "00:00:00"
+        self.cut_markers_end: str = ""  # Empty = to end
 
-        # Frame inputs (used when cut_unit == FRAMES)
-        self.cut_amount_frames: int = 0            # For CUT_FIRST / CUT_LAST
-        self.cut_start_frame: int = 0              # For CUT_RANGE
-        self.cut_end_frame: Optional[int] = None   # None = to end
+        # Split inputs (used when cut_unit == SPLIT)
+        self.split_parts: int = 2
 
         self.apply_delogo: bool = False
         self.delogo_params: DelogoParams = DelogoParams()

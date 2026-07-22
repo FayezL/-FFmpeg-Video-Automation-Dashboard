@@ -18,38 +18,62 @@ except ImportError:
 from src.state import AppState, ProcessingFile, FileStatus, CutUnit
 
 
-def convert_cut_value_to_seconds(
-    value: float,
-    unit: CutUnit,
-    video_duration: float,
-    video_fps: float,
-) -> float:
-    """Convert a cut value in the given unit to seconds.
+def parse_timestamp(ts: str) -> float:
+    """Parse a timestamp string into seconds.
+
+    Accepts:
+        HH:MM:SS or HH:MM:SS.cs  (e.g. "01:30:45", "00:01:30.50")
+        MM:SS or MM:SS.cs        (e.g. "05:30", "02:30.25")
+        Plain seconds            (e.g. "90", "90.5")
+        Empty string             (returns 0.0)
 
     Args:
-        value: The cut value (seconds, percentage, or frame number).
-        unit: The unit to interpret the value in.
-        video_duration: Total video duration in seconds (for PERCENT).
-        video_fps: Video frame rate (for FRAMES).
+        ts: Timestamp string.
 
     Returns:
-        Equivalent time in seconds (always >= 0).
+        Equivalent time in seconds (>= 0).
 
     Raises:
-        ValueError: If unit is FRAMES and fps is 0/unknown, or unknown unit.
+        ValueError: If the string is not a valid timestamp.
     """
-    if unit == CutUnit.TIME:
-        return max(0.0, float(value))
-    if unit == CutUnit.PERCENT:
-        clamped = max(0.0, min(100.0, float(value)))
-        return video_duration * (clamped / 100.0)
-    if unit == CutUnit.FRAMES:
-        if video_fps <= 0:
-            raise ValueError(
-                "Cannot use frame-based cut: video FPS is unknown or zero"
-            )
-        return float(value) / float(video_fps)
-    raise ValueError(f"Unknown unit: {unit}")
+    ts = ts.strip()
+    if not ts:
+        return 0.0
+
+    # Try plain float (seconds) first
+    if ":" not in ts:
+        val = float(ts)
+        if val < 0:
+            raise ValueError(f"Timestamp cannot be negative: {ts!r}")
+        return val
+
+    parts = ts.split(":")
+    if len(parts) == 2:
+        # MM:SS
+        mm, ss = parts
+        mm_val = int(mm)
+        ss_val = float(ss)
+        if mm_val < 0 or ss_val < 0:
+            raise ValueError(f"Timestamp cannot be negative: {ts!r}")
+        if ss_val >= 60:
+            raise ValueError(f"Seconds must be 0–59 in timestamp: {ts!r}")
+        return mm_val * 60.0 + ss_val
+
+    if len(parts) == 3:
+        # HH:MM:SS
+        hh, mm, ss = parts
+        hh_val = int(hh)
+        mm_val = int(mm)
+        ss_val = float(ss)
+        if any(v < 0 for v in (hh_val, mm_val, ss_val)):
+            raise ValueError(f"Timestamp cannot be negative: {ts!r}")
+        if mm_val >= 60:
+            raise ValueError(f"Minutes must be 0–59 in timestamp: {ts!r}")
+        if ss_val >= 60:
+            raise ValueError(f"Seconds must be 0–59 in timestamp: {ts!r}")
+        return hh_val * 3600.0 + mm_val * 60.0 + ss_val
+
+    raise ValueError(f"Invalid timestamp format: {ts!r}")
 
 
 def _parse_frame_rate(rate_string) -> float:
@@ -190,46 +214,17 @@ class VideoProcessor:
 
         return cmd
 
-    def _compute_cut_from_unit(
-        self, total_duration: float, video_fps: float
-    ) -> Tuple[float, float]:
-        """Compute (start_time, end_time) in seconds from the current cut_unit setting.
-
-        Mirrors the dual-checkbox model used by the TIME path:
-        - cut_start_enabled + cut_start_percent/frame → remove from start
-        - cut_end_enabled + cut_end_percent/frame → remove from end
+    def _compute_cut_from_markers(self, total_duration: float) -> Tuple[float, float]:
+        """Compute (start_time, end_time) from MARKERS mode text inputs.
 
         Returns:
             (start_time, end_time) in seconds.
         """
-        unit = self.state.cut_unit
-        cfg = self.state
-
-        start_time = 0.0
-        end_time = total_duration
-
-        if cfg.cut_start_enabled:
-            val = (
-                cfg.cut_start_percent
-                if unit == CutUnit.PERCENT
-                else cfg.cut_start_frame
-            )
-            start_time = convert_cut_value_to_seconds(
-                val, unit, total_duration, video_fps
-            )
-
-        if cfg.cut_end_enabled:
-            val = (
-                cfg.cut_end_percent
-                if unit == CutUnit.PERCENT
-                else cfg.cut_end_frame
-            )
-            if val is not None:
-                amount = convert_cut_value_to_seconds(
-                    val, unit, total_duration, video_fps
-                )
-                end_time = max(1.0, total_duration - amount)
-
+        start_time = parse_timestamp(self.state.cut_markers_start)
+        if self.state.cut_markers_end.strip():
+            end_time = parse_timestamp(self.state.cut_markers_end)
+        else:
+            end_time = total_duration
         return start_time, end_time
 
     def process_video(
@@ -259,7 +254,6 @@ class VideoProcessor:
         try:
             metadata = self.probe_video(input_path)
             total_duration = metadata["duration"]
-            video_fps = metadata.get("fps", 0.0)
 
             start_time = 0.0
             end_time = total_duration
@@ -269,9 +263,12 @@ class VideoProcessor:
                     start_time = processing_file.custom_cut_start_seconds
                 if processing_file.custom_cut_end_seconds is not None:
                     end_time = processing_file.custom_cut_end_seconds
-            elif self.state.cut_unit != CutUnit.TIME:
-                start_time, end_time = self._compute_cut_from_unit(
-                    total_duration, video_fps
+            elif self.state.cut_unit == CutUnit.MARKERS:
+                start_time, end_time = self._compute_cut_from_markers(total_duration)
+            elif self.state.cut_unit == CutUnit.SPLIT:
+                return self._process_split(
+                    input_path, output_path, total_duration,
+                    on_progress, on_log,
                 )
             elif self.state.cut_start_enabled or self.state.cut_end_enabled:
                 if self.state.cut_start_enabled:
@@ -304,6 +301,75 @@ class VideoProcessor:
                 on_log(err + "\n")
             self.state.add_log(err)
             return False, err
+
+    def _process_split(
+        self,
+        input_path: str,
+        output_path: str,
+        total_duration: float,
+        on_progress: Optional[Callable[[float], None]] = None,
+        on_log: Optional[Callable[[str], None]] = None,
+    ) -> Tuple[bool, Optional[str]]:
+        """Split video into N equal parts after applying optional TIME trim.
+
+        The existing TIME trim fields (cut_start_enabled / cut_end_enabled)
+        are applied first, then the remaining video is divided into
+        ``self.state.split_parts`` equal segments.
+        """
+        n_parts = max(1, self.state.split_parts)
+
+        # --- Determine effective trim range (from TIME fields) ---
+        effective_start = 0.0
+        effective_end = total_duration
+
+        if self.state.cut_start_enabled:
+            effective_start = self.state.cut_start_total_seconds_trim
+        if self.state.cut_end_enabled:
+            end_trim = self.state.cut_end_total_seconds_trim
+            effective_end = max(effective_start + 1, total_duration - end_trim)
+
+        trimmed_duration = effective_end - effective_start
+        if trimmed_duration <= 0:
+            return False, "Trimmed duration is zero — check trim settings"
+
+        segment_duration = trimmed_duration / n_parts
+
+        # Zero-pad part numbers (part01 for 10+ parts, part1 for < 10)
+        pad_width = len(str(n_parts))
+
+        # Build the output path template: insert _part{i} before the extension
+        base, ext = os.path.splitext(output_path)
+
+        if on_log:
+            on_log(
+                f"Splitting into {n_parts} parts "
+                f"({segment_duration:.1f}s each from {effective_start:.1f}s)\n"
+            )
+
+        for i in range(n_parts):
+            seg_start = effective_start + i * segment_duration
+            seg_duration = segment_duration
+            part_label = str(i + 1).zfill(pad_width)
+            seg_output = f"{base}_part{part_label}{ext}"
+
+            if on_log:
+                on_log(f"  Part {i + 1}/{n_parts}: {seg_start:.1f}s +{seg_duration:.1f}s\n")
+
+            if HAS_FFMPEG_PYTHON:
+                success, err = self._process_with_ffmpeg_python(
+                    input_path, seg_output, seg_duration, seg_start,
+                    on_progress, on_log,
+                )
+            else:
+                success, err = self._process_with_subprocess(
+                    input_path, seg_output, seg_duration, seg_start,
+                    on_progress, on_log,
+                )
+
+            if not success:
+                return False, f"Part {i + 1} failed: {err}"
+
+        return True, None
 
     def _process_with_ffmpeg_python(
         self,
